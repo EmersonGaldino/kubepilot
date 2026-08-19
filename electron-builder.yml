@@ -1,0 +1,38 @@
+appId: com.kubepilot.app
+productName: KubePilot
+copyright: Copyright © 2026 KubePilot
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - build/trayTemplate*.png
+  - package.json
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+  icon: build/icon.icns
+  # KubePilot only talks to the kubeconfig already trusted by kubectl on this
+  # machine and never phones home — hardened runtime is enabled for
+  # distribution outside the Mac App Store, notarization can be wired up
+  # once a Developer ID certificate is available.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+
+dmg:
+  title: 'KubePilot ${version}'
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications

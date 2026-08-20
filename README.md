@@ -17,14 +17,16 @@ Pick your platform below — each link always resolves to the latest published b
 | 🍎 macOS — Apple Silicon (M1/M2/M3/M4) | **[KubePilot-mac-arm64.dmg](https://github.com/EmersonGaldino/kubepilot/releases/latest/download/KubePilot-mac-arm64.dmg)** |
 | 🍎 macOS — Intel | **[KubePilot-mac-x64.dmg](https://github.com/EmersonGaldino/kubepilot/releases/latest/download/KubePilot-mac-x64.dmg)** |
 | 🪟 Windows — 64-bit | **[KubePilot-win-x64.exe](https://github.com/EmersonGaldino/kubepilot/releases/latest/download/KubePilot-win-x64.exe)** |
-| 🐧 Linux — x64 (AppImage) | **[KubePilot-linux-x64.AppImage](https://github.com/EmersonGaldino/kubepilot/releases/latest/download/KubePilot-linux-x64.AppImage)** |
+| 🐧 Linux — x64 (AppImage) | **[KubePilot-linux-x86_64.AppImage](https://github.com/EmersonGaldino/kubepilot/releases/latest/download/KubePilot-linux-x86_64.AppImage)** |
 | 🐧 Linux — arm64 (AppImage) | **[KubePilot-linux-arm64.AppImage](https://github.com/EmersonGaldino/kubepilot/releases/latest/download/KubePilot-linux-arm64.AppImage)** |
-| 🐧 Linux — x64 (.deb) | **[KubePilot-linux-x64.deb](https://github.com/EmersonGaldino/kubepilot/releases/latest/download/KubePilot-linux-x64.deb)** |
+| 🐧 Linux — x64 (.deb) | **[KubePilot-linux-amd64.deb](https://github.com/EmersonGaldino/kubepilot/releases/latest/download/KubePilot-linux-amd64.deb)** |
 | 🐧 Linux — arm64 (.deb) | **[KubePilot-linux-arm64.deb](https://github.com/EmersonGaldino/kubepilot/releases/latest/download/KubePilot-linux-arm64.deb)** |
 
 Not sure which one you need, or want to see release notes / checksums first? Browse the **[Releases page](https://github.com/EmersonGaldino/kubepilot/releases/latest)** instead.
 
 > These links only work once at least one `v*` tag has been pushed and its CI run has finished publishing (see [CI: multi-platform builds & releases](#ci-multi-platform-builds--releases)) — until then, `/releases/latest` has nothing to redirect to.
+>
+> The Linux filenames' arch suffix looks inconsistent (`x86_64` for the AppImage, `amd64` for the `.deb`) because each packaging format uses its own platform convention — that's not a typo, both mean the same 64-bit x86 architecture.
 
 KubePilot is a **menu-bar-first** app: after opening it once, it lives in your system tray/menu bar. Closing the window doesn't quit it — use the tray menu's **Quit** (or right-click the dock/taskbar icon).
 

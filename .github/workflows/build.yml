@@ -4,8 +4,17 @@ name: Build installers
 # runners (electron-builder can't reliably cross-compile a signed-looking
 # NSIS/dmg from a foreign host) and attaches them as downloadable workflow
 # artifacts. Pushing a `v*` tag additionally publishes those same installers
-# to a GitHub Release — that's the feed `electron-updater` polls in
+# to a single GitHub Release — that's the feed `electron-updater` polls in
 # UpdateService, so a tagged push is what actually ships an update to users.
+#
+# The three platform jobs never call electron-builder's own `--publish`
+# themselves: running that concurrently across a matrix is a known race
+# (each job's electron-builder tries to create the release for the tag at
+# the same time, and — since it doesn't exist yet — several of them "win",
+# leaving multiple duplicate drafts with the assets split across them).
+# Instead every job only builds (`--publish never`) and uploads its output
+# as a workflow artifact; a single `release` job downloads all three and
+# creates/publishes one release, so there's exactly one place assets land.
 on:
   push:
     branches: [main]
@@ -40,18 +49,11 @@ jobs:
       - name: Build renderer + main
         run: npm run build
 
-      # Publishes to the release matching this tag only when the trigger
-      # was a `v*` tag push; every other push just produces the artifacts
-      # below without touching GitHub Releases.
-      - name: Package (publish on tag)
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: npx electron-builder --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-
-      - name: Package (build only)
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+      # electron-builder still writes the update-metadata yml files
+      # (latest.yml / latest-mac.yml / latest-linux*.yml) locally even
+      # with publishing disabled — the `release` job below is what
+      # actually uploads everything to GitHub.
+      - name: Package
         run: npx electron-builder --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -65,4 +67,34 @@ jobs:
             release/*.AppImage
             release/*.deb
             release/*.blockmap
+            release/*.yml
           if-no-files-found: ignore
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: kubepilot-*
+          path: release
+          merge-multiple: true
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Idempotent: creates the release the first time a tag is pushed,
+        # or just re-uploads (clobbering same-named assets) if the workflow
+        # is re-run against a tag that already has one.
+        run: |
+          if gh release view "${{ github.ref_name }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "${{ github.ref_name }}" release/* \
+              --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "${{ github.ref_name }}" \
+              --repo "${{ github.repository }}" \
+              --title "${{ github.ref_name }}" \
+              --generate-notes \
+              release/*
+          fi

@@ -33,10 +33,12 @@ KubePilot is a **menu-bar-first** app: after opening it once, it lives in your s
 ### macOS
 
 1. Open the `.dmg` and drag **KubePilot** into `Applications`.
-2. The app isn't signed with an Apple Developer ID yet, so the first launch is blocked by Gatekeeper ("KubePilot can't be opened because it is from an unidentified developer"). To open it:
-   - **Right-click (or Control-click) the app → Open** → confirm "Open" in the dialog, **or**
-   - Run once in Terminal: `xattr -cr /Applications/KubePilot.app`
+2. The app isn't signed with a paid Apple Developer ID yet, so the first launch is blocked by Gatekeeper — on recent macOS (Sonoma/Sequoia+) as *"Apple could not verify that KubePilot is free of malware"*, with only a dismiss button. To open it anyway, either:
+   - **Terminal (fastest)**: `xattr -cr /Applications/KubePilot.app`, then open the app normally, **or**
+   - **System Settings**: open **System Settings → Privacy & Security**, scroll to the bottom "Security" section, find KubePilot listed as blocked, click **Open Anyway**, confirm with your password/Touch ID — then open the app again and click **Open** on the second, less scary prompt.
 3. Look for the KubePilot icon in the menu bar (top-right, near the clock).
+
+This step is a one-time thing per install (not per launch), and applies to every unsigned/ad-hoc-signed macOS app, not something specific to KubePilot — it goes away once/if a paid Apple Developer ID + notarization is added (see [Next steps](#next-steps)).
 
 ### Windows
 
@@ -72,7 +74,7 @@ KubePilot checks for new releases automatically (on launch and every few hours) 
 - **"No contexts found" / empty cluster list** — check `kubectl config get-contexts` in a terminal; if that's empty too, it's a kubeconfig problem, not a KubePilot one.
 - **A cluster shows as disconnected/error but `kubectl` works fine** — usually a missing `PATH` for an `exec`-auth CLI (see Requirements above), or the current Google/Azure CLI login has expired (`az login` / `gcloud auth login`, then use the app's **Refresh**).
 - **Permission-looking errors on a specific resource type** — you're likely missing an RBAC/IAM verb for that resource; other screens keep working, since each list call is independent.
-- **macOS: "app is damaged and can't be opened"** — Gatekeeper quarantine flag; run `xattr -cr /Applications/KubePilot.app` and reopen.
+- **macOS: "Apple could not verify..." / "unidentified developer" / "app is damaged"** — all three are Gatekeeper reacting to the app not being signed with a paid Apple Developer ID; none mean the download is actually corrupted. See the macOS steps above (`xattr -cr` is the fastest fix for all three).
 
 ---
 

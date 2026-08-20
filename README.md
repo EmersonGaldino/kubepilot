@@ -138,8 +138,11 @@ kubepilot/
 
 ## Running from source
 
+> **This code is source-available, not open-source** — see [LICENSE](LICENSE). Cloning this repo lets you read it, but a plain `npm run dev`/`npm run build` intentionally refuses to start: the app checks for `OFFICIAL_BUILD_KEY` (baked in at build time from an untracked `.env.local`, copy `.env.local.example`) against a hash embedded in `electron/main.ts`, and shows a blocking "Unofficial build" screen instead of launching if it's missing or wrong. If you're an authorized contributor, ask the maintainer for the real value.
+
 ```bash
 npm install
+cp .env.local.example .env.local   # then fill in OFFICIAL_BUILD_KEY (ask the maintainer)
 
 npm run dev       # Vite dev server + Electron, hot reload on main/preload/renderer
 npm run lint       # ESLint (flat config)
@@ -210,3 +213,7 @@ The service layer was exercised directly (bypassing the UI) against a real kubec
 2. PTY/xterm exec (today's `exec` is line-based, not a full terminal session), notifications, configurable auto-refresh.
 3. Node drain, CRD discovery, NetworkPolicy / PDB dedicated pages (YAML apply covers them today).
 4. Virtualize very large tables if a cluster routinely exceeds ~2k pods in one list.
+
+## License
+
+Source-available, not open-source: viewing and evaluating the code is fine, running it isn't — unless you're using an [official installer](#download--install) as an end user, or have been explicitly authorized by the maintainer to build from source. See [LICENSE](LICENSE) for the full terms.

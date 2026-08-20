@@ -46,8 +46,13 @@ jobs:
 
       - run: npm ci
 
+      # OFFICIAL_BUILD_KEY authorizes this build to actually run — see
+      # `isOfficialBuild()` in electron/main.ts. Only present here (a repo
+      # secret) and in an authorized maintainer's untracked `.env.local`.
       - name: Build renderer + main
         run: npm run build
+        env:
+          OFFICIAL_BUILD_KEY: ${{ secrets.OFFICIAL_BUILD_KEY }}
 
       # electron-builder still writes the update-metadata yml files
       # (latest.yml / latest-mac.yml / latest-linux*.yml) locally even

@@ -3,10 +3,25 @@ import { fileURLToPath, URL } from 'node:url'
 
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import electron from 'vite-plugin-electron/simple'
 
 const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8')) as { version: string }
+
+// Loads `.env`/`.env.local` (gitignored) in addition to whatever's already
+// in `process.env` — the latter is how the GitHub Actions release workflow
+// supplies `OFFICIAL_BUILD_KEY` (a repo secret), the former is how a
+// maintainer supplies the same value for `npm run dev`/`npm run build`
+// locally. See the `OFFICIAL_BUILD_KEY` comment in `electron/main.ts`.
+const env = loadEnv(process.env.NODE_ENV ?? 'development', process.cwd(), '')
+
+// See `OFFICIAL_BUILD_KEY` in electron/main.ts. Declared once and spread
+// into the main entry's own `vite.config` below — vite-plugin-electron
+// builds each entry as its own separate Vite instance, so the root-level
+// `define` further down does NOT reach it; only this entry-specific one does.
+const buildKeyDefine = {
+  __BUILD_KEY__: JSON.stringify(env.OFFICIAL_BUILD_KEY ?? process.env.OFFICIAL_BUILD_KEY ?? ''),
+}
 
 export default defineConfig({
   // Bakes the app version into the renderer bundle at build time so the
@@ -28,6 +43,7 @@ export default defineConfig({
         // this plugin regardless.
         entry: 'electron/main.ts',
         vite: {
+          define: buildKeyDefine,
           build: {
             outDir: 'dist-electron',
             minify: false,

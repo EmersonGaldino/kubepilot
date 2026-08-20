@@ -1,0 +1,28 @@
+Copyright (c) 2026 Emerson Galdino. All rights reserved.
+
+This repository's source code is made available for viewing, learning, and
+evaluation purposes only. No license is granted to any person to install,
+run, execute, reproduce, distribute, sublicense, modify, or create
+derivative works of this software, in whole or in part, in source or
+compiled/binary form, except:
+
+  1. as expressly authorized in writing by the copyright holder; or
+  2. by running an official, unmodified installer published under this
+     repository's GitHub Releases, strictly for that installer's own
+     intended end-user purpose (i.e. using the KubePilot application),
+     not for extracting, reverse engineering, or repackaging its code.
+
+"Official build" means a build produced by this repository's own release
+pipeline (see `.github/workflows/build.yml`), which the software itself
+verifies at startup. Builds produced any other way — including a plain
+local `git clone` followed by building from source — are not authorized
+under this license and are expected not to run.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For licensing inquiries, contact the repository owner.

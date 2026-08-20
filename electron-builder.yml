@@ -19,10 +19,9 @@ asarUnpack:
 npmRebuild: false
 
 # electron-updater reads this same block (via the packaged app-update.yml)
-# to know where to look for new versions. If the repo is/becomes private,
-# add `private: true` here and make sure a GH_TOKEN with repo access is
-# present wherever the build runs (the GitHub Actions workflow already
-# gets one for free via `secrets.GITHUB_TOKEN`).
+# to know where to look for new versions — requires a public repo, since
+# a private one's release assets need an authenticated request that a
+# distributed app can't carry a secret for.
 publish:
   provider: github
   owner: EmersonGaldino

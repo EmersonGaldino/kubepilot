@@ -7,6 +7,8 @@ import { IPC_CHANNELS } from '../../shared/ipc-contract'
 import type { ConnectionStatus } from '../../shared/types'
 import type { ServiceContainer } from '../services'
 
+// Full-color emoji dots for the dropdown menu, where a splash of color reads
+// as informative rather than noisy.
 const STATUS_GLYPH: Record<ConnectionStatus, string> = {
   connected: '🟢',
   connecting: '🟡',
@@ -14,9 +16,34 @@ const STATUS_GLYPH: Record<ConnectionStatus, string> = {
   error: '🔴',
 }
 
+// What actually sits next to the icon in the menu bar strip, though — that's
+// prime real estate beside the system clock, and a big colored ball there
+// reads as a badge/notification rather than a status hint. Plain text
+// glyphs (with the U+FE0E variation selector forcing the monochrome "text"
+// presentation instead of emoji-style color) keep it quiet: nothing at all
+// for the common "everything's fine" state, and a small mark only when
+// something actually needs attention — the same restraint macOS's own menu
+// bar extras (Wi-Fi, Bluetooth, Focus) use.
+const STATUS_TITLE: Record<ConnectionStatus, string> = {
+  connected: '',
+  connecting: '…', // …
+  disconnected: '',
+  error: '⚠︎', // ⚠ (text presentation)
+}
+
+const STATUS_TOOLTIP: Record<ConnectionStatus, string> = {
+  connected: 'KubePilot — Connected',
+  connecting: 'KubePilot — Connecting…',
+  disconnected: 'KubePilot',
+  error: 'KubePilot — Connection error',
+}
+
 function resolveTrayIconPath(): string {
-  // `build/` ships inside the packaged app (see electron-builder.yml `files`)
-  // and sits alongside the project root in dev, so this resolves in both.
+  // Packaged: extraResources copies the PNGs next to the .app resources so
+  // nativeImage does not have to read them out of the asar. Dev: repo `build/`.
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'trayTemplate.png')
+  }
   return path.join(app.getAppPath(), 'build', 'trayTemplate.png')
 }
 
@@ -78,7 +105,8 @@ export function createTray(
       if (pods) podsLine = `Pods         ${pods.length}`
     }
 
-    tray.setTitle(STATUS_GLYPH[status])
+    tray.setTitle(STATUS_TITLE[status])
+    tray.setToolTip(STATUS_TOOLTIP[status])
 
     const contextItems: Electron.MenuItemConstructorOptions[] = contexts.map((ctx) => ({
       label: `${ctx.isCurrent ? '●' : '○'} ${ctx.name}`,
@@ -100,7 +128,7 @@ export function createTray(
       { type: 'separator' },
       { label: 'Open KubePilot', click: openWindow },
       { label: 'Change Cluster', submenu: contextItems.length > 0 ? contextItems : [{ label: 'No contexts found', enabled: false }] },
-      { label: 'Refresh', click: () => void refresh() },
+      { label: 'Refresh', click: () => navigate('refresh') },
       { label: 'Settings', click: () => navigate('/settings') },
       { type: 'separator' },
       { label: 'Quit', click: onQuit },

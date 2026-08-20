@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { ResourcePage } from '@/components/common/ResourcePage'
 import { ReplicaSetDetailsDrawer } from '@/components/replicasets/ReplicaSetDetailsDrawer'
 import { ReplicaSetTable } from '@/components/replicasets/ReplicaSetTable'
+import { useResourceFocus } from '@/hooks/useResourceFocus'
+import { useClusterStore } from '@/stores/useClusterStore'
 import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import { useReplicaSetStore } from '@/stores/useReplicaSetStore'
 import type { ReplicaSetSummary } from '@shared/types'
@@ -23,17 +25,21 @@ export function ReplicaSets() {
   const selectedReplicaSetStatus = useReplicaSetStore((s) => s.selectedReplicaSetStatus)
 
   const namespaceFilter = useNamespaceStore((s) => s.selected)
+  const currentContext = useClusterStore((s) => s.currentContext)
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     void loadReplicaSets(namespaceFilter)
-  }, [loadReplicaSets, namespaceFilter])
+  }, [loadReplicaSets, namespaceFilter, currentContext, refreshGeneration])
 
   const handleSelect = (replicaSet: ReplicaSetSummary) => {
     setDrawerOpen(true)
     void loadReplicaSetDetail(replicaSet.namespace, replicaSet.name)
   }
+
+  useResourceFocus('replicasets', replicaSets, (r) => r.name, handleSelect)
 
   const handleClose = () => {
     setDrawerOpen(false)
@@ -50,6 +56,8 @@ export function ReplicaSets() {
         status={status}
         error={error}
         onRetry={() => void loadReplicaSets(namespaceFilter)}
+        createKind="replicaset"
+        onCreated={() => void loadReplicaSets(namespaceFilter)}
         emptyIcon={Layers}
         emptyTitle="No replicasets found"
         emptyDescription="This namespace has no replicasets, or the cluster is empty."

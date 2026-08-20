@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { ResourcePage } from '@/components/common/ResourcePage'
 import { ConfigMapDetailsDrawer } from '@/components/configmaps/ConfigMapDetailsDrawer'
 import { ConfigMapTable } from '@/components/configmaps/ConfigMapTable'
+import { useResourceFocus } from '@/hooks/useResourceFocus'
 import { useConfigMapStore } from '@/stores/useConfigMapStore'
+import { useClusterStore } from '@/stores/useClusterStore'
 import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import type { ConfigMapSummary } from '@shared/types'
 
@@ -23,17 +25,21 @@ export function ConfigMaps() {
   const selectedConfigMapStatus = useConfigMapStore((s) => s.selectedConfigMapStatus)
 
   const namespaceFilter = useNamespaceStore((s) => s.selected)
+  const currentContext = useClusterStore((s) => s.currentContext)
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     void loadConfigMaps(namespaceFilter)
-  }, [loadConfigMaps, namespaceFilter])
+  }, [loadConfigMaps, namespaceFilter, currentContext, refreshGeneration])
 
   const handleSelect = (configMap: ConfigMapSummary) => {
     setDrawerOpen(true)
     void loadConfigMapDetail(configMap.namespace, configMap.name)
   }
+
+  useResourceFocus('configmaps', configMaps, (c) => c.name, handleSelect)
 
   const handleClose = () => {
     setDrawerOpen(false)
@@ -50,6 +56,8 @@ export function ConfigMaps() {
         status={status}
         error={error}
         onRetry={() => void loadConfigMaps(namespaceFilter)}
+        createKind="configmap"
+        onCreated={() => void loadConfigMaps(namespaceFilter)}
         emptyIcon={FileText}
         emptyTitle="No configmaps found"
         emptyDescription="This namespace has no configmaps, or the cluster is empty."

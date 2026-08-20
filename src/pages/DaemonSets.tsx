@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { ResourcePage } from '@/components/common/ResourcePage'
 import { DaemonSetDetailsDrawer } from '@/components/daemonsets/DaemonSetDetailsDrawer'
 import { DaemonSetTable } from '@/components/daemonsets/DaemonSetTable'
+import { useResourceFocus } from '@/hooks/useResourceFocus'
 import { useDaemonSetStore } from '@/stores/useDaemonSetStore'
+import { useClusterStore } from '@/stores/useClusterStore'
 import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import type { DaemonSetSummary } from '@shared/types'
 
@@ -23,17 +25,21 @@ export function DaemonSets() {
   const selectedDaemonSetStatus = useDaemonSetStore((s) => s.selectedDaemonSetStatus)
 
   const namespaceFilter = useNamespaceStore((s) => s.selected)
+  const currentContext = useClusterStore((s) => s.currentContext)
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     void loadDaemonSets(namespaceFilter)
-  }, [loadDaemonSets, namespaceFilter])
+  }, [loadDaemonSets, namespaceFilter, currentContext, refreshGeneration])
 
   const handleSelect = (daemonSet: DaemonSetSummary) => {
     setDrawerOpen(true)
     void loadDaemonSetDetail(daemonSet.namespace, daemonSet.name)
   }
+
+  useResourceFocus('daemonsets', daemonsets, (d) => d.name, handleSelect)
 
   const handleClose = () => {
     setDrawerOpen(false)
@@ -50,6 +56,8 @@ export function DaemonSets() {
         status={status}
         error={error}
         onRetry={() => void loadDaemonSets(namespaceFilter)}
+        createKind="daemonset"
+        onCreated={() => void loadDaemonSets(namespaceFilter)}
         emptyIcon={SquareStack}
         emptyTitle="No daemonsets found"
         emptyDescription="This namespace has no daemonsets, or the cluster is empty."

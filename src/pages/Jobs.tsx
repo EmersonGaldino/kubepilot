@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { ResourcePage } from '@/components/common/ResourcePage'
 import { JobDetailsDrawer } from '@/components/jobs/JobDetailsDrawer'
 import { JobTable } from '@/components/jobs/JobTable'
+import { useResourceFocus } from '@/hooks/useResourceFocus'
 import { useJobStore } from '@/stores/useJobStore'
+import { useClusterStore } from '@/stores/useClusterStore'
 import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import type { JobSummary } from '@shared/types'
 
@@ -23,17 +25,21 @@ export function Jobs() {
   const selectedJobStatus = useJobStore((s) => s.selectedJobStatus)
 
   const namespaceFilter = useNamespaceStore((s) => s.selected)
+  const currentContext = useClusterStore((s) => s.currentContext)
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     void loadJobs(namespaceFilter)
-  }, [loadJobs, namespaceFilter])
+  }, [loadJobs, namespaceFilter, currentContext, refreshGeneration])
 
   const handleSelect = (job: JobSummary) => {
     setDrawerOpen(true)
     void loadJobDetail(job.namespace, job.name)
   }
+
+  useResourceFocus('jobs', jobs, (j) => j.name, handleSelect)
 
   const handleClose = () => {
     setDrawerOpen(false)
@@ -50,6 +56,8 @@ export function Jobs() {
         status={status}
         error={error}
         onRetry={() => void loadJobs(namespaceFilter)}
+        createKind="job"
+        onCreated={() => void loadJobs(namespaceFilter)}
         emptyIcon={Briefcase}
         emptyTitle="No jobs found"
         emptyDescription="This namespace has no jobs, or the cluster is empty."

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { PortForwardPanel } from '@/components/common/PortForwardPanel'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Drawer } from '@/components/ui/Drawer'
 import { DescribeModal } from '@/components/common/DescribeModal'
@@ -128,6 +129,13 @@ export function ServiceDetailsDrawer({
               </div>
             )}
 
+            <PortForwardPanel
+              kind="service"
+              namespace={service.namespace}
+              name={service.name}
+              defaultTargetPort={service.portList[0]?.port ?? 80}
+            />
+
             {actions.actionError && <p className="text-xs text-red-400">{actions.actionError}</p>}
 
             <div className="flex flex-wrap items-center gap-2 border-t border-border-subtle pt-4">
@@ -156,6 +164,7 @@ export function ServiceDetailsDrawer({
       loading={actions.describeLoading}
       error={actions.describeError}
       onClose={actions.closeDescribe}
+      onApplied={refreshAfterMutation}
     />
     <ConfirmDialog
       open={actions.confirmOpen}

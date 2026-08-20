@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 
 import { IconButton } from '@/components/ui/IconButton'
+import { APP_ICON_URL } from '@/lib/appIcon'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 export function AboutDialog({ onClose }: { onClose: () => void }) {
@@ -19,7 +20,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
           <X className="h-4 w-4" />
         </IconButton>
 
-        <img src="/app-icon.png" alt="" className="mx-auto h-14 w-14 rounded-xl" />
+        <img src={APP_ICON_URL} alt="" className="mx-auto h-14 w-14 rounded-xl" />
         <h2 id="about-title" className="mt-3 text-base font-semibold text-fg">
           KubePilot
         </h2>

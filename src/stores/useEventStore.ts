@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 
+import { beginClusterRequest, isSameClusterRequest } from '@/lib/clusterRequest'
 import { kubernetesApi } from '@/services/kubernetesApi'
 import type { RequestStatus } from '@/types/ui'
 import type { EventSummary } from '@shared/types'
@@ -21,11 +22,14 @@ export const useEventStore = create<EventState>((set) => ({
   error: null,
 
   loadEvents: async (namespace) => {
+    const request = beginClusterRequest()
     set({ status: 'loading', error: null })
     try {
       const events = await kubernetesApi.events.list(namespace)
+      if (!isSameClusterRequest(request)) return
       set({ events, status: 'success' })
     } catch (error) {
+      if (!isSameClusterRequest(request)) return
       set({ status: 'error', error: error instanceof Error ? error.message : String(error) })
     }
   },

@@ -9,8 +9,32 @@ directories:
 files:
   - dist/**/*
   - dist-electron/**/*
-  - build/trayTemplate*.png
   - package.json
+  - '!**/node_modules/**'
+
+asarUnpack:
+  - dist/**/*
+  - dist-electron/preload.js
+
+npmRebuild: false
+
+# electron-updater reads this same block (via the packaged app-update.yml)
+# to know where to look for new versions. If the repo is/becomes private,
+# add `private: true` here and make sure a GH_TOKEN with repo access is
+# present wherever the build runs (the GitHub Actions workflow already
+# gets one for free via `secrets.GITHUB_TOKEN`).
+publish:
+  provider: github
+  owner: EmersonGaldino
+  repo: kubepilot
+
+extraResources:
+  - from: build/trayTemplate.png
+    to: trayTemplate.png
+  - from: build/trayTemplate@2x.png
+    to: trayTemplate@2x.png
+  - from: build/trayTemplate@3x.png
+    to: trayTemplate@3x.png
 
 mac:
   category: public.app-category.developer-tools
@@ -20,12 +44,11 @@ mac:
         - arm64
         - x64
   icon: build/icon.icns
-  # KubePilot only talks to the kubeconfig already trusted by kubectl on this
-  # machine and never phones home — hardened runtime is enabled for
-  # distribution outside the Mac App Store, notarization can be wired up
-  # once a Developer ID certificate is available.
-  hardenedRuntime: true
+  # Unsigned local builds cannot use hardened runtime — macOS kills the
+  # process on launch. Re-enable together with a Developer ID + notarization.
+  hardenedRuntime: false
   gatekeeperAssess: false
+  identity: null
 
 dmg:
   title: 'KubePilot ${version}'
@@ -36,3 +59,31 @@ dmg:
       y: 220
       type: link
       path: /Applications
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # electron-builder generates the .ico from this PNG (needs to be >=256px)
+  # so there's no separately-maintained Windows icon asset to go stale.
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+        - arm64
+    - target: deb
+      arch:
+        - x64
+        - arm64
+  icon: build/icon.png
+  category: Development

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { ResourcePage } from '@/components/common/ResourcePage'
 import { SecretDetailsDrawer } from '@/components/secrets/SecretDetailsDrawer'
 import { SecretTable } from '@/components/secrets/SecretTable'
+import { useResourceFocus } from '@/hooks/useResourceFocus'
+import { useClusterStore } from '@/stores/useClusterStore'
 import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import { useSecretStore } from '@/stores/useSecretStore'
 import type { SecretSummary } from '@shared/types'
@@ -23,17 +25,21 @@ export function Secrets() {
   const selectedSecretStatus = useSecretStore((s) => s.selectedSecretStatus)
 
   const namespaceFilter = useNamespaceStore((s) => s.selected)
+  const currentContext = useClusterStore((s) => s.currentContext)
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     void loadSecrets(namespaceFilter)
-  }, [loadSecrets, namespaceFilter])
+  }, [loadSecrets, namespaceFilter, currentContext, refreshGeneration])
 
   const handleSelect = (secret: SecretSummary) => {
     setDrawerOpen(true)
     void loadSecretDetail(secret.namespace, secret.name)
   }
+
+  useResourceFocus('secrets', secrets, (s) => s.name, handleSelect)
 
   const handleClose = () => {
     setDrawerOpen(false)
@@ -50,6 +56,8 @@ export function Secrets() {
         status={status}
         error={error}
         onRetry={() => void loadSecrets(namespaceFilter)}
+        createKind="secret"
+        onCreated={() => void loadSecrets(namespaceFilter)}
         emptyIcon={KeyRound}
         emptyTitle="No secrets found"
         emptyDescription="This namespace has no secrets, or the cluster is empty."

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ResourcePage } from '@/components/common/ResourcePage'
 import { EventTable } from '@/components/events/EventTable'
 import { useEventStore } from '@/stores/useEventStore'
+import { useClusterStore } from '@/stores/useClusterStore'
 import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import type { EventSummary, EventType } from '@shared/types'
 
@@ -25,11 +26,13 @@ export function Events() {
   const loadEvents = useEventStore((s) => s.loadEvents)
 
   const namespaceFilter = useNamespaceStore((s) => s.selected)
+  const currentContext = useClusterStore((s) => s.currentContext)
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
   const [typeFilter, setTypeFilter] = useState<'all' | EventType>('all')
 
   useEffect(() => {
     void loadEvents(namespaceFilter)
-  }, [loadEvents, namespaceFilter])
+  }, [loadEvents, namespaceFilter, currentContext, refreshGeneration])
 
   const visible = useMemo(
     () => (typeFilter === 'all' ? events : events.filter((event) => event.type === typeFilter)),

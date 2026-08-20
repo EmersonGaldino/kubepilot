@@ -2,21 +2,23 @@
 
 A fast, modern desktop manager for multiple Kubernetes clusters — Azure AKS, Google GKE, and local clusters (Minikube, Rancher Desktop, kind…), all treated as plain Kubernetes API servers. Built with Electron, React, TypeScript, and `@kubernetes/client-node`, reading directly from your existing `~/.kube/config`.
 
-This is the **Phase 1 (MVP)** delivery: kubeconfig contexts, cluster connection, namespaces, pods, a basic dashboard, and a real log viewer (fetch + live streaming). No mocked data anywhere — every screen is backed by a real call through `@kubernetes/client-node` against whatever cluster is active in your kubeconfig.
+This is a desktop **kubectl map**: contexts, workloads, cluster mesh (nodes, namespaces, Ingress, HPA, PV/PVC), YAML apply, logs, and port-forward. No mocked data — every screen is backed by a real call through `@kubernetes/client-node` against whatever cluster is active in your kubeconfig.
 
 **Checkpoint for later sessions:** see [docs/CHECKPOINT.md](docs/CHECKPOINT.md) (architecture, implemented surface, UI/UX tokens and rules).
 
 ## What's implemented
 
-- **Menu bar app**: a Tray icon (🟢/🟡/⚪️/🔴 reflects connection status) with a native menu — connection status, active cluster, namespace/pod counts, a "Change Cluster" submenu, Refresh, Settings, and Quit. Clicking the icon or "Open KubePilot" shows the main window.
-- **kubeconfig integration**: reads contexts via `KubeConfig.loadFromDefault()` (respects `$KUBECONFIG`), lists them in the sidebar, and switches the active context in-memory — it never writes to your kubeconfig file. A file watcher detects external changes (e.g. running `kubectl config use-context` in a terminal) and reflects them live.
-- **Dashboard**: cluster name/provider/version/API server, node & namespace counts, pod totals with a running/pending/failed breakdown, pods-per-namespace, and a "pods with problems" list.
-- **Pods**: sortable table (namespace column only shown under "All namespaces"), a detail drawer with containers/labels/owner, and a "Logs" action that deep-links into the Logs page.
-- **Logs**: real one-shot fetch and true streaming (follow), container picker, tail-line count, timestamps, auto-refresh interval (when not following), download-to-file, and clear.
-- **Global namespace selector**: switching it in the sidebar reloads pods (and everywhere else namespace-scoped) automatically.
-- **Security**: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, a narrow `contextBridge` API (no raw `ipcRenderer`/`require` exposed), a strict CSP, external links forced through the OS browser, and destructive-action affordances (Exec/Describe/Delete on the pod drawer) are present but disabled — wired up in Phase 3.
-
-Deployments, Services, ConfigMaps, Secrets, Events, Exec/Terminal, and Command Palette are **not** in this delivery — see [Next steps](#next-steps). The sidebar shows them as "Soon" so the roadmap is visible without dead links.
+- **Menu bar app**: a Tray icon (🟢/🟡/⚪️/🔴 reflects connection status) with a native menu — connection status, active cluster, namespace/pod counts, a "Change Cluster" submenu, Refresh (reloads the current view), Settings, and Quit.
+- **kubeconfig integration**: reads contexts via `KubeConfig.loadFromDefault()` (respects `$KUBECONFIG`), lists them in the sidebar, and switches the active context in-memory — it never writes to your kubeconfig file. Switching context invalidates resource stores so the UI never shows the previous cluster's objects.
+- **Dashboard**: cluster name/provider/version/API server, node & namespace counts (links to `/nodes` and `/namespaces`), pod totals, pods-per-namespace, and a "pods with problems" list.
+- **Cluster mesh**: Nodes (Ready, roles, allocatable, cordon/uncordon), Namespaces (create/delete), Ingress, HPA (degrades when metrics are missing), PVC / PV / StorageClass.
+- **Workloads**: Pods, Deployments, StatefulSets, DaemonSets, ReplicaSets, Jobs, CronJobs — list + drawer, describe/apply YAML, delete; scale/restart where it applies.
+- **Config & network**: Services (with port-forward), ConfigMaps, Secrets (masked in the table/drawer; YAML apply can reveal values), Events (All/Warning/Normal).
+- **YAML apply**: Describe abre um editor Monaco (autocomplete, validação, Format). Apply (dry-run opcional) e **New YAML** nas páginas de recurso. Qualquer kind descritível pode ser criado/editado sem um formulário custom.
+- **Logs**: one-shot fetch and streaming (follow), container picker, tail, timestamps, download.
+- **Port-forward**: pod or Service → `127.0.0.1` from the detail drawer.
+- **Exec**: line-based `/bin/sh` (not a full PTY/xterm session).
+- **Security**: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, narrow `contextBridge`, CSP. Forbidden list calls surface as a permission error, not a fake empty cluster.
 
 ## Project structure
 
@@ -116,10 +118,9 @@ The service layer was exercised directly (bypassing the UI) against the real kub
 
 `npm run test` currently covers the pure logic that's cheapest and most valuable to keep regression-tested (`classifyProvider`, `formatAge`, pod status helpers, log-line buffering across chunk boundaries) — it doesn't hit a live cluster, so it's safe in CI. The live-cluster checks above were exploratory and intentionally not committed as automated tests.
 
-## Next steps (Phase 2+)
+## Next steps
 
-1. **Phase 2** — Deployments, Services, ConfigMaps (view/create/edit/delete), Secrets (masked, reveal-on-confirm), Events (with Warning/Normal + kind filters).
-2. **Phase 3** — Exec/Terminal (Kubernetes exec API, xterm.js-style interactive shell), Scale/Restart/Rollout/Delete with confirmation dialogs.
-3. **Phase 4** — Notifications (macOS `Notification` API, configurable triggers), Command Palette (⌘K) and the ⌘1–⌘5 shortcuts, configurable auto-refresh with request caching/dedup, search/filtering across resource tables.
-4. Wire up code signing + notarization for distributable `.dmg`s once a Developer ID certificate is available.
-5. Consider an EKS-specific provider label (already classified in `classifyProvider`, just needs a real cluster to validate against) — no architecture changes needed, since EKS is just another kubeconfig context.
+1. Command palette (⌘K), PTY/xterm exec, notifications, configurable auto-refresh.
+2. Node drain, CRD discovery, NetworkPolicy / PDB dedicated pages (YAML apply covers them today).
+3. Code signing + notarization for distributable `.dmg`s.
+4. Virtualize very large tables if a cluster routinely exceeds ~2k pods in one list.

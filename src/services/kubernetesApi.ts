@@ -1,5 +1,15 @@
 import type { IpcResult } from '@shared/ipc-contract'
-import type { DeleteParams, DescribeParams, ExecStartParams, LogsFetchParams, RestartParams, ScaleParams } from '@shared/types'
+import type {
+  ApplyParams,
+  DeleteParams,
+  DescribeParams,
+  ExecStartParams,
+  LogsFetchParams,
+  NamespaceCreateParams,
+  PortForwardStartParams,
+  RestartParams,
+  ScaleParams,
+} from '@shared/types'
 
 /** Unwraps the `{ ok, data | error }` envelope every IPC call resolves to,
  * so the rest of the renderer can just `await` and `catch` like any other
@@ -27,6 +37,9 @@ export const kubernetesApi = {
   },
   namespaces: {
     list: () => window.kubepilot.namespaces.list().then(unwrap),
+    get: (name: string) => window.kubepilot.namespaces.get({ name }).then(unwrap),
+    create: (params: NamespaceCreateParams) => window.kubepilot.namespaces.create(params).then(unwrap),
+    delete: (name: string) => window.kubepilot.namespaces.delete({ name }).then(unwrap),
   },
   pods: {
     list: (namespace: string, labelSelector?: string) => window.kubepilot.pods.list({ namespace, labelSelector }).then(unwrap),
@@ -71,6 +84,31 @@ export const kubernetesApi = {
   events: {
     list: (namespace: string) => window.kubepilot.events.list({ namespace }).then(unwrap),
   },
+  nodes: {
+    list: () => window.kubepilot.nodes.list().then(unwrap),
+    get: (name: string) => window.kubepilot.nodes.get({ name }).then(unwrap),
+    cordon: (name: string, unschedulable: boolean) => window.kubepilot.nodes.cordon({ name, unschedulable }).then(unwrap),
+  },
+  ingresses: {
+    list: (namespace: string) => window.kubepilot.ingresses.list({ namespace }).then(unwrap),
+    get: (namespace: string, name: string) => window.kubepilot.ingresses.get({ namespace, name }).then(unwrap),
+  },
+  hpa: {
+    list: (namespace: string) => window.kubepilot.hpa.list({ namespace }).then(unwrap),
+    get: (namespace: string, name: string) => window.kubepilot.hpa.get({ namespace, name }).then(unwrap),
+  },
+  pvcs: {
+    list: (namespace: string) => window.kubepilot.pvcs.list({ namespace }).then(unwrap),
+    get: (namespace: string, name: string) => window.kubepilot.pvcs.get({ namespace, name }).then(unwrap),
+  },
+  pvs: {
+    list: () => window.kubepilot.pvs.list().then(unwrap),
+    get: (name: string) => window.kubepilot.pvs.get({ name }).then(unwrap),
+  },
+  storageclasses: {
+    list: () => window.kubepilot.storageclasses.list().then(unwrap),
+    get: (name: string) => window.kubepilot.storageclasses.get({ name }).then(unwrap),
+  },
   describe: {
     get: (params: DescribeParams) => window.kubepilot.describe.get(params).then(unwrap),
   },
@@ -78,6 +116,14 @@ export const kubernetesApi = {
     delete: (params: DeleteParams) => window.kubepilot.actions.delete(params).then(unwrap),
     scale: (params: ScaleParams) => window.kubepilot.actions.scale(params).then(unwrap),
     restart: (params: RestartParams) => window.kubepilot.actions.restart(params).then(unwrap),
+  },
+  apply: {
+    run: (params: ApplyParams) => window.kubepilot.apply.run(params).then(unwrap),
+  },
+  portforward: {
+    start: (params: PortForwardStartParams) => window.kubepilot.portforward.start(params).then(unwrap),
+    stop: (id: string) => window.kubepilot.portforward.stop(id).then(unwrap),
+    list: () => window.kubepilot.portforward.list().then(unwrap),
   },
   exec: {
     start: (params: ExecStartParams) => window.kubepilot.exec.start(params).then(unwrap),

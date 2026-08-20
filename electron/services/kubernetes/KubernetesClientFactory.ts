@@ -1,10 +1,23 @@
-import { AppsV1Api, BatchV1Api, CoreV1Api, KubeConfig, Log, VersionApi } from '@kubernetes/client-node'
+import {
+  AppsV1Api,
+  AutoscalingV2Api,
+  BatchV1Api,
+  CoreV1Api,
+  KubeConfig,
+  Log,
+  NetworkingV1Api,
+  StorageV1Api,
+  VersionApi,
+} from '@kubernetes/client-node'
 
 export interface KubernetesClientBundle {
   kubeConfig: KubeConfig
   coreV1Api: CoreV1Api
   appsV1Api: AppsV1Api
   batchV1Api: BatchV1Api
+  networkingV1Api: NetworkingV1Api
+  autoscalingV2Api: AutoscalingV2Api
+  storageV1Api: StorageV1Api
   versionApi: VersionApi
   log: Log
 }
@@ -34,6 +47,9 @@ export class KubernetesClientFactory {
       coreV1Api: kubeConfig.makeApiClient(CoreV1Api),
       appsV1Api: kubeConfig.makeApiClient(AppsV1Api),
       batchV1Api: kubeConfig.makeApiClient(BatchV1Api),
+      networkingV1Api: kubeConfig.makeApiClient(NetworkingV1Api),
+      autoscalingV2Api: kubeConfig.makeApiClient(AutoscalingV2Api),
+      storageV1Api: kubeConfig.makeApiClient(StorageV1Api),
       versionApi: kubeConfig.makeApiClient(VersionApi),
       log: new Log(kubeConfig),
     }

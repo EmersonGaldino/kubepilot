@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { kubernetesApi } from '@/services/kubernetesApi'
+import { useClusterStore } from '@/stores/useClusterStore'
 import type { RequestStatus } from '@/types/ui'
 import type { PodSummary } from '@shared/types'
 
-/** Cluster-wide pod snapshot, independent of the sidebar's namespace filter
- * — the Dashboard always reports totals for the whole cluster. */
 export function useAllPods(contextName: string | null) {
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
   const [pods, setPods] = useState<PodSummary[]>([])
   const [status, setStatus] = useState<RequestStatus>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +30,7 @@ export function useAllPods(contextName: string | null) {
     // mount and on every context switch, not just after data arrives.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh()
-  }, [refresh])
+  }, [refresh, refreshGeneration])
 
   return { pods, status, error, refresh }
 }

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 
+import { beginClusterRequest, isSameClusterRequest } from '@/lib/clusterRequest'
 import { kubernetesApi } from '@/services/kubernetesApi'
 import type { RequestStatus } from '@/types/ui'
 import type { DaemonSetDetail, DaemonSetSummary } from '@shared/types'
@@ -25,21 +26,27 @@ export const useDaemonSetStore = create<DaemonSetState>((set) => ({
   selectedDaemonSetStatus: 'idle',
 
   loadDaemonSets: async (namespace) => {
+    const request = beginClusterRequest()
     set({ status: 'loading', error: null })
     try {
       const daemonsets = await kubernetesApi.daemonsets.list(namespace)
+      if (!isSameClusterRequest(request)) return
       set({ daemonsets, status: 'success' })
     } catch (error) {
+      if (!isSameClusterRequest(request)) return
       set({ status: 'error', error: error instanceof Error ? error.message : String(error) })
     }
   },
 
   loadDaemonSetDetail: async (namespace, name) => {
+    const request = beginClusterRequest()
     set({ selectedDaemonSetStatus: 'loading' })
     try {
       const selectedDaemonSet = await kubernetesApi.daemonsets.get(namespace, name)
+      if (!isSameClusterRequest(request)) return
       set({ selectedDaemonSet, selectedDaemonSetStatus: 'success' })
     } catch (error) {
+      if (!isSameClusterRequest(request)) return
       set({ selectedDaemonSetStatus: 'error', error: error instanceof Error ? error.message : String(error) })
     }
   },

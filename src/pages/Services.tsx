@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { ResourcePage } from '@/components/common/ResourcePage'
 import { ServiceDetailsDrawer } from '@/components/services/ServiceDetailsDrawer'
 import { ServiceTable } from '@/components/services/ServiceTable'
+import { useResourceFocus } from '@/hooks/useResourceFocus'
+import { useClusterStore } from '@/stores/useClusterStore'
 import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import { useServiceStore } from '@/stores/useServiceStore'
 import type { ServiceSummary } from '@shared/types'
@@ -23,17 +25,21 @@ export function Services() {
   const selectedServiceStatus = useServiceStore((s) => s.selectedServiceStatus)
 
   const namespaceFilter = useNamespaceStore((s) => s.selected)
+  const currentContext = useClusterStore((s) => s.currentContext)
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     void loadServices(namespaceFilter)
-  }, [loadServices, namespaceFilter])
+  }, [loadServices, namespaceFilter, currentContext, refreshGeneration])
 
   const handleSelect = (service: ServiceSummary) => {
     setDrawerOpen(true)
     void loadServiceDetail(service.namespace, service.name)
   }
+
+  useResourceFocus('services', services, (s) => s.name, handleSelect)
 
   const handleClose = () => {
     setDrawerOpen(false)
@@ -50,6 +56,8 @@ export function Services() {
         status={status}
         error={error}
         onRetry={() => void loadServices(namespaceFilter)}
+        createKind="service"
+        onCreated={() => void loadServices(namespaceFilter)}
         emptyIcon={Network}
         emptyTitle="No services found"
         emptyDescription="This namespace has no services, or the cluster is empty."

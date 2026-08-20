@@ -9,7 +9,8 @@ export class ResourceActionService {
   constructor(private readonly clusterService: ClusterService) {}
 
   async delete({ kind, namespace, name }: DeleteParams): Promise<void> {
-    const { coreV1Api, appsV1Api, batchV1Api } = this.clusterService.getActiveBundle()
+    const { coreV1Api, appsV1Api, batchV1Api, networkingV1Api, autoscalingV2Api, storageV1Api } =
+      this.clusterService.getActiveBundle()
 
     switch (kind) {
       case 'pod':
@@ -42,6 +43,26 @@ export class ResourceActionService {
       case 'secret':
         await coreV1Api.deleteNamespacedSecret({ name, namespace })
         return
+      case 'namespace':
+        await coreV1Api.deleteNamespace({ name })
+        return
+      case 'ingress':
+        await networkingV1Api.deleteNamespacedIngress({ name, namespace })
+        return
+      case 'hpa':
+        await autoscalingV2Api.deleteNamespacedHorizontalPodAutoscaler({ name, namespace })
+        return
+      case 'persistentvolumeclaim':
+        await coreV1Api.deleteNamespacedPersistentVolumeClaim({ name, namespace })
+        return
+      case 'persistentvolume':
+        await coreV1Api.deletePersistentVolume({ name })
+        return
+      case 'storageclass':
+        await storageV1Api.deleteStorageClass({ name })
+        return
+      case 'node':
+        throw new Error('Nodes cannot be deleted from KubePilot. Cordon the node instead.')
       default:
         throw new Error(`Unsupported kind for delete: ${kind as string}`)
     }

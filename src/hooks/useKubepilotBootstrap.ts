@@ -1,21 +1,12 @@
 import { useEffect } from 'react'
 
 import { kubernetesApi } from '@/services/kubernetesApi'
+import { resetAllResourceStores } from '@/stores/resetResourceStores'
 import { useClusterStore } from '@/stores/useClusterStore'
 import { useDeploymentStore } from '@/stores/useDeploymentStore'
 import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import { usePodStore } from '@/stores/usePodStore'
 
-/**
- * Central data-flow coordinator, mounted once at the app root.
- *
- * - Loads kubeconfig contexts on startup and stays subscribed to external
- *   changes (e.g. `kubectl config use-context` run in a terminal).
- * - Whenever the active context changes, reloads cluster info + namespaces.
- * - Whenever the active context OR the selected namespace changes, reloads
- *   pods and deployments — this is what makes the global namespace selector
- *   (section 14) propagate to every screen automatically.
- */
 export function useKubepilotBootstrap(): void {
   const loadContexts = useClusterStore((s) => s.loadContexts)
   const applyContextsSnapshot = useClusterStore((s) => s.applyContextsSnapshot)
@@ -35,6 +26,7 @@ export function useKubepilotBootstrap(): void {
 
   useEffect(() => {
     if (!currentContext) return
+    resetAllResourceStores()
     void loadClusterInfo()
     void loadNamespaces()
   }, [currentContext, loadClusterInfo, loadNamespaces])

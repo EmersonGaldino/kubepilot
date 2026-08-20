@@ -27,6 +27,9 @@ const kubepilotApi: KubepilotApi = {
 
   namespaces: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.namespaces.list),
+    get: (params) => ipcRenderer.invoke(IPC_CHANNELS.namespaces.get, params),
+    create: (params) => ipcRenderer.invoke(IPC_CHANNELS.namespaces.create, params),
+    delete: (params) => ipcRenderer.invoke(IPC_CHANNELS.namespaces.delete, params),
   },
 
   pods: {
@@ -83,6 +86,37 @@ const kubepilotApi: KubepilotApi = {
     list: (params) => ipcRenderer.invoke(IPC_CHANNELS.events.list, params),
   },
 
+  nodes: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.nodes.list),
+    get: (params) => ipcRenderer.invoke(IPC_CHANNELS.nodes.get, params),
+    cordon: (params) => ipcRenderer.invoke(IPC_CHANNELS.nodes.cordon, params),
+  },
+
+  ingresses: {
+    list: (params) => ipcRenderer.invoke(IPC_CHANNELS.ingresses.list, params),
+    get: (params) => ipcRenderer.invoke(IPC_CHANNELS.ingresses.get, params),
+  },
+
+  hpa: {
+    list: (params) => ipcRenderer.invoke(IPC_CHANNELS.hpa.list, params),
+    get: (params) => ipcRenderer.invoke(IPC_CHANNELS.hpa.get, params),
+  },
+
+  pvcs: {
+    list: (params) => ipcRenderer.invoke(IPC_CHANNELS.pvcs.list, params),
+    get: (params) => ipcRenderer.invoke(IPC_CHANNELS.pvcs.get, params),
+  },
+
+  pvs: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.pvs.list),
+    get: (params) => ipcRenderer.invoke(IPC_CHANNELS.pvs.get, params),
+  },
+
+  storageclasses: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.storageclasses.list),
+    get: (params) => ipcRenderer.invoke(IPC_CHANNELS.storageclasses.get, params),
+  },
+
   describe: {
     get: (params) => ipcRenderer.invoke(IPC_CHANNELS.describe.get, params),
   },
@@ -91,6 +125,16 @@ const kubepilotApi: KubepilotApi = {
     delete: (params) => ipcRenderer.invoke(IPC_CHANNELS.actions.delete, params),
     scale: (params) => ipcRenderer.invoke(IPC_CHANNELS.actions.scale, params),
     restart: (params) => ipcRenderer.invoke(IPC_CHANNELS.actions.restart, params),
+  },
+
+  apply: {
+    run: (params) => ipcRenderer.invoke(IPC_CHANNELS.apply.run, params),
+  },
+
+  portforward: {
+    start: (params) => ipcRenderer.invoke(IPC_CHANNELS.portforward.start, params),
+    stop: (id) => ipcRenderer.invoke(IPC_CHANNELS.portforward.stop, id),
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.portforward.list),
   },
 
   exec: {
@@ -152,6 +196,41 @@ const kubepilotApi: KubepilotApi = {
       const handler = (_event: Electron.IpcRendererEvent, route: string) => listener(route)
       ipcRenderer.on(IPC_CHANNELS.tray.navigate, handler)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.tray.navigate, handler)
+    },
+  },
+
+  window: {
+    notifySplashDone: () => ipcRenderer.send(IPC_CHANNELS.window.splashDone),
+  },
+
+  update: {
+    check: () => ipcRenderer.invoke(IPC_CHANNELS.update.check),
+    download: () => ipcRenderer.invoke(IPC_CHANNELS.update.download),
+    install: () => ipcRenderer.invoke(IPC_CHANNELS.update.install),
+    onAvailable: (listener) => {
+      const handler = (_event: Electron.IpcRendererEvent, version: string) => listener(version)
+      ipcRenderer.on(IPC_CHANNELS.update.available, handler)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.update.available, handler)
+    },
+    onNotAvailable: (listener) => {
+      const handler = () => listener()
+      ipcRenderer.on(IPC_CHANNELS.update.notAvailable, handler)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.update.notAvailable, handler)
+    },
+    onProgress: (listener) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: Parameters<typeof listener>[0]) => listener(progress)
+      ipcRenderer.on(IPC_CHANNELS.update.progress, handler)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.update.progress, handler)
+    },
+    onDownloaded: (listener) => {
+      const handler = (_event: Electron.IpcRendererEvent, version: string) => listener(version)
+      ipcRenderer.on(IPC_CHANNELS.update.downloaded, handler)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.update.downloaded, handler)
+    },
+    onError: (listener) => {
+      const handler = (_event: Electron.IpcRendererEvent, error: string) => listener(error)
+      ipcRenderer.on(IPC_CHANNELS.update.error, handler)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.update.error, handler)
     },
   },
 }

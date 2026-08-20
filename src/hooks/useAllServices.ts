@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { kubernetesApi } from '@/services/kubernetesApi'
+import { useClusterStore } from '@/stores/useClusterStore'
 import type { RequestStatus } from '@/types/ui'
 import type { ServiceSummary } from '@shared/types'
 
@@ -8,6 +9,7 @@ import type { ServiceSummary } from '@shared/types'
  * filter — the Dashboard always reports totals for the whole cluster.
  * Mirrors {@link useAllPods}. */
 export function useAllServices(contextName: string | null) {
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
   const [services, setServices] = useState<ServiceSummary[]>([])
   const [status, setStatus] = useState<RequestStatus>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -28,7 +30,7 @@ export function useAllServices(contextName: string | null) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh()
-  }, [refresh])
+  }, [refresh, refreshGeneration])
 
   return { services, status, error, refresh }
 }

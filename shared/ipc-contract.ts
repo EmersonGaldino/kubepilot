@@ -6,9 +6,12 @@
  * are built against this contract so the two sides can never drift apart.
  */
 import type {
+  ApplyParams,
+  ApplyResult,
   ClusterInfo,
   ConfigMapDetail,
   ConfigMapSummary,
+  CordonParams,
   CronJobDetail,
   CronJobSummary,
   DaemonSetDetail,
@@ -19,13 +22,27 @@ import type {
   DescribeParams,
   EventSummary,
   ExecStartParams,
+  HpaDetail,
+  HpaSummary,
+  IngressDetail,
+  IngressSummary,
   JobDetail,
   JobSummary,
   KubeContext,
   LogsFetchParams,
+  NamespaceCreateParams,
+  NamespaceDetail,
   NamespaceSummary,
+  NodeDetail,
+  NodeSummary,
   PodDetail,
   PodSummary,
+  PortForwardSession,
+  PortForwardStartParams,
+  PvDetail,
+  PvcDetail,
+  PvcSummary,
+  PvSummary,
   ReplicaSetDetail,
   ReplicaSetSummary,
   RestartParams,
@@ -36,6 +53,8 @@ import type {
   ServiceSummary,
   StatefulSetDetail,
   StatefulSetSummary,
+  StorageClassDetail,
+  StorageClassSummary,
 } from './types'
 
 export const IPC_CHANNELS = {
@@ -50,6 +69,9 @@ export const IPC_CHANNELS = {
   },
   namespaces: {
     list: 'namespaces:list',
+    get: 'namespaces:get',
+    create: 'namespaces:create',
+    delete: 'namespaces:delete',
   },
   pods: {
     list: 'pods:list',
@@ -94,6 +116,31 @@ export const IPC_CHANNELS = {
   events: {
     list: 'events:list',
   },
+  nodes: {
+    list: 'nodes:list',
+    get: 'nodes:get',
+    cordon: 'nodes:cordon',
+  },
+  ingresses: {
+    list: 'ingresses:list',
+    get: 'ingresses:get',
+  },
+  hpa: {
+    list: 'hpa:list',
+    get: 'hpa:get',
+  },
+  pvcs: {
+    list: 'pvcs:list',
+    get: 'pvcs:get',
+  },
+  pvs: {
+    list: 'pvs:list',
+    get: 'pvs:get',
+  },
+  storageclasses: {
+    list: 'storageclasses:list',
+    get: 'storageclasses:get',
+  },
   describe: {
     get: 'describe:get',
   },
@@ -101,6 +148,14 @@ export const IPC_CHANNELS = {
     delete: 'actions:delete',
     scale: 'actions:scale',
     restart: 'actions:restart',
+  },
+  apply: {
+    run: 'apply:run',
+  },
+  portforward: {
+    start: 'portforward:start',
+    stop: 'portforward:stop',
+    list: 'portforward:list',
   },
   exec: {
     start: 'exec:start',
@@ -120,6 +175,19 @@ export const IPC_CHANNELS = {
   },
   tray: {
     navigate: 'tray:navigate',
+  },
+  window: {
+    splashDone: 'window:splash-done',
+  },
+  update: {
+    check: 'update:check',
+    download: 'update:download',
+    install: 'update:install',
+    available: 'update:available',
+    notAvailable: 'update:not-available',
+    progress: 'update:progress',
+    downloaded: 'update:downloaded',
+    error: 'update:error',
   },
 } as const
 
@@ -168,6 +236,10 @@ export interface NamespacedGetParams {
   name: string
 }
 
+export interface NamedGetParams {
+  name: string
+}
+
 export interface ExecStreamHandle {
   execId: string
 }
@@ -204,6 +276,18 @@ export interface LogsStreamEndEvent {
   streamId: string
 }
 
+export interface UpdateProgressPayload {
+  percent: number
+  bytesPerSecond: number
+  transferred: number
+  total: number
+}
+
+export interface UpdateCheckPayload {
+  updateAvailable: boolean
+  version: string | null
+}
+
 /** Renderer-facing view of the preload bridge. Kept in `shared/` (rather
  * than `src/types`) so main, preload and renderer all compile against the
  * exact same function signatures. */
@@ -223,6 +307,9 @@ export interface KubepilotApi {
   }
   namespaces: {
     list: () => Promise<IpcResult<NamespaceSummary[]>>
+    get: (params: NamedGetParams) => Promise<IpcResult<NamespaceDetail>>
+    create: (params: NamespaceCreateParams) => Promise<IpcResult<void>>
+    delete: (params: NamedGetParams) => Promise<IpcResult<void>>
   }
   pods: {
     list: (params: PodsListParams) => Promise<IpcResult<PodSummary[]>>
@@ -267,6 +354,31 @@ export interface KubepilotApi {
   events: {
     list: (params: NamespacedListParams) => Promise<IpcResult<EventSummary[]>>
   }
+  nodes: {
+    list: () => Promise<IpcResult<NodeSummary[]>>
+    get: (params: NamedGetParams) => Promise<IpcResult<NodeDetail>>
+    cordon: (params: CordonParams) => Promise<IpcResult<void>>
+  }
+  ingresses: {
+    list: (params: NamespacedListParams) => Promise<IpcResult<IngressSummary[]>>
+    get: (params: NamespacedGetParams) => Promise<IpcResult<IngressDetail>>
+  }
+  hpa: {
+    list: (params: NamespacedListParams) => Promise<IpcResult<HpaSummary[]>>
+    get: (params: NamespacedGetParams) => Promise<IpcResult<HpaDetail>>
+  }
+  pvcs: {
+    list: (params: NamespacedListParams) => Promise<IpcResult<PvcSummary[]>>
+    get: (params: NamespacedGetParams) => Promise<IpcResult<PvcDetail>>
+  }
+  pvs: {
+    list: () => Promise<IpcResult<PvSummary[]>>
+    get: (params: NamedGetParams) => Promise<IpcResult<PvDetail>>
+  }
+  storageclasses: {
+    list: () => Promise<IpcResult<StorageClassSummary[]>>
+    get: (params: NamedGetParams) => Promise<IpcResult<StorageClassDetail>>
+  }
   /** Backs the "Describe" action shown on every resource drawer — returns
    * the raw object as YAML (`kubectl get <kind> <name> -o yaml` equivalent)
    * instead of each resource type growing its own describe endpoint. */
@@ -279,6 +391,14 @@ export interface KubepilotApi {
     delete: (params: DeleteParams) => Promise<IpcResult<void>>
     scale: (params: ScaleParams) => Promise<IpcResult<void>>
     restart: (params: RestartParams) => Promise<IpcResult<void>>
+  }
+  apply: {
+    run: (params: ApplyParams) => Promise<IpcResult<ApplyResult>>
+  }
+  portforward: {
+    start: (params: PortForwardStartParams) => Promise<IpcResult<PortForwardSession>>
+    stop: (id: string) => Promise<IpcResult<void>>
+    list: () => Promise<IpcResult<PortForwardSession[]>>
   }
   exec: {
     start: (params: ExecStartParams) => Promise<IpcResult<ExecStreamHandle>>
@@ -308,5 +428,25 @@ export interface KubepilotApi {
   }
   tray: {
     onNavigate: (listener: (route: string) => void) => () => void
+  }
+  window: {
+    /** Fire-and-forget: tells main the splash screen has finished fading
+     * out, so it's safe to reveal the (macOS-only) traffic lights that were
+     * hidden while it covered them. */
+    notifySplashDone: () => void
+  }
+  /** App-update flow: an explicit check kicked off from main on launch
+   * (and periodically) surfaces a prompt in the renderer; downloading and
+   * installing both stay user-initiated so nothing installs silently
+   * mid-session. */
+  update: {
+    check: () => Promise<IpcResult<UpdateCheckPayload>>
+    download: () => Promise<IpcResult<void>>
+    install: () => Promise<IpcResult<void>>
+    onAvailable: (listener: (version: string) => void) => () => void
+    onNotAvailable: (listener: () => void) => () => void
+    onProgress: (listener: (progress: UpdateProgressPayload) => void) => () => void
+    onDownloaded: (listener: (version: string) => void) => () => void
+    onError: (listener: (error: string) => void) => () => void
   }
 }

@@ -151,6 +151,8 @@ export function SecretDetailsDrawer({
       loading={actions.describeLoading}
       error={actions.describeError}
       onClose={actions.closeDescribe}
+      onApplied={refreshAfterMutation}
+      secretWarning
     />
     <ConfirmDialog
       open={actions.confirmOpen}

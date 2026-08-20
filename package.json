@@ -1,6 +1,6 @@
 {
   "name": "kubepilot",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "description": "KubePilot — a fast, modern desktop manager for multiple Kubernetes clusters",
   "author": "KubePilot",
   "license": "UNLICENSED",
@@ -16,13 +16,21 @@
     "start": "npm run build && electron .",
     "lint": "eslint .",
     "test": "vitest run",
-    "package": "npm run build && electron-builder"
+    "bump:version": "npm version patch --no-git-tag-version --no-commit-hooks",
+    "package": "npm run bump:version && npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "package:minor": "npm version minor --no-git-tag-version --no-commit-hooks && npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "package:major": "npm version major --no-git-tag-version --no-commit-hooks && npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder"
   },
   "dependencies": {
     "@kubernetes/client-node": "^2.0.0",
+    "@monaco-editor/react": "^4.7.0",
     "clsx": "^2.1.1",
+    "electron-updater": "^6.8.9",
+    "fix-path": "^5.0.0",
     "js-yaml": "^5.3.0",
     "lucide-react": "^1.32.0",
+    "monaco-editor": "^0.52.2",
+    "monaco-yaml": "^5.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",

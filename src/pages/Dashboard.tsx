@@ -120,8 +120,8 @@ export function Dashboard() {
             { label: 'Failed', value: podBreakdown.failed, tone: 'danger' },
           ]}
         />
-        <StatCard label="Nodes" value={clusterInfo.nodeCount ?? '—'} icon={ServerCog} />
-        <StatCard label="Namespaces" value={clusterInfo.namespaceCount ?? '—'} icon={Layers} />
+        <StatCard label="Nodes" value={clusterInfo.nodeCount ?? '—'} icon={ServerCog} to="/nodes" />
+        <StatCard label="Namespaces" value={clusterInfo.namespaceCount ?? '—'} icon={Layers} to="/namespaces" />
         <StatCard
           label="Deployments"
           value={deploymentsStatus === 'loading' ? '—' : deploymentBreakdown.total}

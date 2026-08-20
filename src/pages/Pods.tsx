@@ -1,9 +1,11 @@
 import { Boxes } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { ResourcePage } from '@/components/common/ResourcePage'
 import { PodDetailsDrawer } from '@/components/pods/PodDetailsDrawer'
 import { PodTable } from '@/components/pods/PodTable'
+import { useResourceFocus } from '@/hooks/useResourceFocus'
+import { useClusterStore } from '@/stores/useClusterStore'
 import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import { usePodStore } from '@/stores/usePodStore'
 import type { PodSummary } from '@shared/types'
@@ -23,13 +25,21 @@ export function Pods() {
   const selectedPodStatus = usePodStore((s) => s.selectedPodStatus)
 
   const namespaceFilter = useNamespaceStore((s) => s.selected)
+  const currentContext = useClusterStore((s) => s.currentContext)
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  useEffect(() => {
+    void loadPods(namespaceFilter)
+  }, [loadPods, namespaceFilter, currentContext, refreshGeneration])
 
   const handleSelect = (pod: PodSummary) => {
     setDrawerOpen(true)
     void loadPodDetail(pod.namespace, pod.name)
   }
+
+  useResourceFocus('pods', pods, (pod) => pod.name, handleSelect)
 
   const handleClose = () => {
     setDrawerOpen(false)
@@ -46,6 +56,8 @@ export function Pods() {
         status={status}
         error={error}
         onRetry={() => void loadPods(namespaceFilter)}
+        createKind="pod"
+        onCreated={() => void loadPods(namespaceFilter)}
         emptyIcon={Boxes}
         emptyTitle="No pods found"
         emptyDescription="This namespace has no pods, or the cluster is empty."

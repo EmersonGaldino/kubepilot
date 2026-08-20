@@ -224,6 +224,7 @@ export function DeploymentDetailsDrawer({
       loading={actions.describeLoading}
       error={actions.describeError}
       onClose={actions.closeDescribe}
+      onApplied={refreshAfterMutation}
     />
     <ConfirmDialog
       open={actions.confirmOpen}

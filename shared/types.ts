@@ -41,6 +41,7 @@ export interface NamespaceSummary {
   name: string
   status: string
   age: string | null
+  labels: Record<string, string>
 }
 
 export type PodPhase = 'Running' | 'Pending' | 'Succeeded' | 'Failed' | 'Unknown'
@@ -303,9 +304,28 @@ export type DescribableKind =
   | 'service'
   | 'configmap'
   | 'secret'
+  | 'node'
+  | 'namespace'
+  | 'ingress'
+  | 'hpa'
+  | 'persistentvolumeclaim'
+  | 'persistentvolume'
+  | 'storageclass'
+
+export const CLUSTER_SCOPED_KINDS: readonly DescribableKind[] = [
+  'node',
+  'namespace',
+  'persistentvolume',
+  'storageclass',
+]
+
+export function isClusterScopedKind(kind: DescribableKind): boolean {
+  return (CLUSTER_SCOPED_KINDS as readonly string[]).includes(kind)
+}
 
 export interface DescribeParams {
   kind: DescribableKind
+  /** Empty string for cluster-scoped kinds (Node, Namespace, PV, StorageClass). */
   namespace: string
   name: string
 }
@@ -347,4 +367,171 @@ export interface ExecStartParams {
   /** Defaults to `['/bin/sh']` when omitted — most container images ship a
    * POSIX shell even when they lack bash. */
   command?: string[]
+}
+
+export interface NodeCondition {
+  type: string
+  status: string
+  message: string | null
+}
+
+export interface NodeSummary {
+  name: string
+  ready: boolean
+  roles: string
+  kubeletVersion: string | null
+  cpuAllocatable: string | null
+  memoryAllocatable: string | null
+  unschedulable: boolean
+  age: string | null
+}
+
+export interface NodeDetail extends NodeSummary {
+  createdAt: string | null
+  labels: Record<string, string>
+  taints: string[]
+  addresses: { type: string; address: string }[]
+  conditions: NodeCondition[]
+  pods: { name: string; namespace: string; phase: PodPhase }[]
+}
+
+export interface CordonParams {
+  name: string
+  unschedulable: boolean
+}
+
+export interface NamespaceDetail extends NamespaceSummary {
+  createdAt: string | null
+  annotations: Record<string, string>
+  resourceQuotas: { name: string; hard: string }[]
+  limitRanges: { name: string; summary: string }[]
+}
+
+export interface NamespaceCreateParams {
+  name: string
+  labels?: Record<string, string>
+}
+
+export interface IngressRuleSummary {
+  host: string
+  path: string
+  serviceName: string | null
+  servicePort: string | null
+}
+
+export interface IngressSummary {
+  name: string
+  namespace: string
+  className: string | null
+  hosts: string
+  address: string | null
+  ports: string
+  age: string | null
+}
+
+export interface IngressDetail extends IngressSummary {
+  createdAt: string | null
+  labels: Record<string, string>
+  tlsSecrets: string[]
+  rules: IngressRuleSummary[]
+}
+
+export interface HpaSummary {
+  name: string
+  namespace: string
+  targetKind: string
+  targetName: string
+  minReplicas: number
+  maxReplicas: number
+  currentReplicas: number | null
+  desiredReplicas: number | null
+  primaryMetric: string
+  currentMetric: string | null
+  age: string | null
+}
+
+export interface HpaDetail extends HpaSummary {
+  createdAt: string | null
+  labels: Record<string, string>
+  conditions: { type: string; status: string; message: string | null }[]
+  metrics: string[]
+}
+
+export interface PvcSummary {
+  name: string
+  namespace: string
+  phase: string
+  volumeName: string | null
+  capacity: string | null
+  accessModes: string
+  storageClass: string | null
+  age: string | null
+}
+
+export interface PvcDetail extends PvcSummary {
+  createdAt: string | null
+  labels: Record<string, string>
+}
+
+export interface PvSummary {
+  name: string
+  status: string
+  capacity: string | null
+  accessModes: string
+  reclaimPolicy: string | null
+  storageClass: string | null
+  claimRef: string | null
+  age: string | null
+}
+
+export interface PvDetail extends PvSummary {
+  createdAt: string | null
+  labels: Record<string, string>
+}
+
+export interface StorageClassSummary {
+  name: string
+  provisioner: string
+  reclaimPolicy: string | null
+  volumeBindingMode: string | null
+  isDefault: boolean
+  age: string | null
+}
+
+export interface StorageClassDetail extends StorageClassSummary {
+  createdAt: string | null
+  labels: Record<string, string>
+  parameters: Record<string, string>
+}
+
+export interface ApplyParams {
+  yaml: string
+  dryRun?: boolean
+}
+
+export interface ApplyResult {
+  kind: string
+  name: string
+  namespace: string | null
+  created: boolean
+  dryRun: boolean
+}
+
+export type PortForwardTargetKind = 'pod' | 'service'
+
+export interface PortForwardStartParams {
+  kind: PortForwardTargetKind
+  namespace: string
+  name: string
+  localPort: number
+  targetPort: number
+}
+
+export interface PortForwardSession {
+  id: string
+  kind: PortForwardTargetKind
+  namespace: string
+  name: string
+  localPort: number
+  targetPort: number
 }

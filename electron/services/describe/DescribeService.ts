@@ -12,7 +12,8 @@ export class DescribeService {
   constructor(private readonly clusterService: ClusterService) {}
 
   async describe({ kind, namespace, name }: DescribeParams): Promise<string> {
-    const { coreV1Api, appsV1Api, batchV1Api } = this.clusterService.getActiveBundle()
+    const { coreV1Api, appsV1Api, batchV1Api, networkingV1Api, autoscalingV2Api, storageV1Api } =
+      this.clusterService.getActiveBundle()
 
     const object = await (() => {
       switch (kind) {
@@ -36,11 +37,26 @@ export class DescribeService {
           return coreV1Api.readNamespacedConfigMap({ name, namespace })
         case 'secret':
           return coreV1Api.readNamespacedSecret({ name, namespace })
+        case 'node':
+          return coreV1Api.readNode({ name })
+        case 'namespace':
+          return coreV1Api.readNamespace({ name })
+        case 'ingress':
+          return networkingV1Api.readNamespacedIngress({ name, namespace })
+        case 'hpa':
+          return autoscalingV2Api.readNamespacedHorizontalPodAutoscaler({ name, namespace })
+        case 'persistentvolumeclaim':
+          return coreV1Api.readNamespacedPersistentVolumeClaim({ name, namespace })
+        case 'persistentvolume':
+          return coreV1Api.readPersistentVolume({ name })
+        case 'storageclass':
+          return storageV1Api.readStorageClass({ name })
         default:
           throw new Error(`Unsupported kind for describe: ${kind as string}`)
       }
     })()
 
-    return yaml.dump(object, { skipInvalid: true, noRefs: true })
+    const plain = JSON.parse(JSON.stringify(object)) as unknown
+    return yaml.dump(plain, { skipInvalid: true, noRefs: true, lineWidth: 120 })
   }
 }

@@ -2,13 +2,21 @@ import path from 'node:path'
 
 import { app, BrowserWindow, shell } from 'electron'
 
+function preloadScript(): string {
+  return path.join(app.getAppPath(), 'dist-electron', 'preload.js')
+}
+
+function rendererIndexHtml(): string {
+  return path.join(app.getAppPath(), 'dist', 'index.html')
+}
+
 export function createMainWindow(): BrowserWindow {
   const window = new BrowserWindow({
     width: 1320,
     height: 840,
     minWidth: 980,
     minHeight: 640,
-    show: false,
+    show: true,
     backgroundColor: '#0d1117',
     titleBarStyle: 'hidden',
     // `hiddenInset`'s default traffic-light position sat right on top of the
@@ -16,14 +24,33 @@ export function createMainWindow(): BrowserWindow {
     // dedicated draggable strip above the layout instead (see AppLayout).
     trafficLightPosition: { x: 16, y: 13 },
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: preloadScript(),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
     },
   })
 
-  window.once('ready-to-show', () => window.show())
+  // The splash screen (rendered by AppLayout, covering the whole window)
+  // is web content, so it can't cover macOS's natively-drawn traffic
+  // lights — they'd otherwise float on top of it looking like they belong
+  // to a window that isn't ready yet. Hide them until the renderer reports
+  // the splash has faded out (see `notifySplashDone`/`revealWindowControls`).
+  if (process.platform === 'darwin') {
+    window.setWindowButtonVisibility(false)
+  }
+
+  const reveal = () => {
+    if (!window.isDestroyed() && !window.isVisible()) window.show()
+  }
+
+  window.once('ready-to-show', reveal)
+  window.webContents.once('did-finish-load', reveal)
+  window.webContents.once('did-fail-load', (_event, code, description, url) => {
+    console.error(`[window] failed to load ${url} (${code}): ${description}`)
+    reveal()
+  })
+  setTimeout(reveal, 2500)
 
   if (!app.isPackaged) {
     // Surfaces renderer console output (including uncaught errors) in the
@@ -45,10 +72,18 @@ export function createMainWindow(): BrowserWindow {
   if (process.env.VITE_DEV_SERVER_URL) {
     void window.loadURL(process.env.VITE_DEV_SERVER_URL)
   } else {
-    void window.loadFile(path.join(__dirname, '../dist/index.html'))
+    void window.loadFile(rendererIndexHtml())
   }
 
   return window
+}
+
+/** Reveals the traffic lights hidden at window creation, once the splash
+ * screen covering them has faded out. No-op on platforms without them. */
+export function revealWindowControls(window: BrowserWindow): void {
+  if (process.platform === 'darwin' && !window.isDestroyed()) {
+    window.setWindowButtonVisibility(true)
+  }
 }
 
 /** Hides instead of destroying, so the tray icon can reopen the same window

@@ -1,9 +1,14 @@
 import type { LucideIcon } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 
+import { Button } from '@/components/ui/Button'
 import { SearchInput } from '@/components/ui/SearchInput'
+import { yamlStubFor } from '@/lib/yamlStubs'
+import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import type { RequestStatus } from '@/types/ui'
+import type { DescribableKind } from '@shared/types'
 
+import { DescribeModal } from './DescribeModal'
 import { EmptyState } from './EmptyState'
 import { ErrorState } from './ErrorState'
 import { SkeletonTableRows } from './Skeleton'
@@ -22,6 +27,8 @@ export function ResourcePage<T>({
   searchPlaceholder,
   skeletonColumns = 6,
   toolbar,
+  createKind,
+  onCreated,
   children,
 }: {
   title: string
@@ -37,9 +44,13 @@ export function ResourcePage<T>({
   searchPlaceholder?: string
   skeletonColumns?: number
   toolbar?: ReactNode
+  createKind?: DescribableKind
+  onCreated?: () => void
   children: (filtered: T[]) => ReactNode
 }) {
   const [query, setQuery] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
+  const namespaceFilter = useNamespaceStore((s) => s.selected)
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -59,6 +70,11 @@ export function ResourcePage<T>({
           </p>
         </div>
         {toolbar}
+        {createKind && (
+          <Button variant="primary" onClick={() => setCreateOpen(true)}>
+            New YAML
+          </Button>
+        )}
         {status !== 'loading' && status !== 'error' && items.length > 0 && (
           <SearchInput
             value={query}
@@ -85,8 +101,23 @@ export function ResourcePage<T>({
         />
       )}
 
-      {status !== 'loading' && filtered.length > 0 && (
-        <div className="kp-table-wrap">{children(filtered)}</div>
+      {status !== 'loading' && filtered.length > 0 && <div className="kp-table-wrap">{children(filtered)}</div>}
+
+      {createKind && (
+        <DescribeModal
+          open={createOpen}
+          title={`New ${title} · YAML`}
+          yaml={yamlStubFor(createKind, namespaceFilter)}
+          loading={false}
+          error={null}
+          onClose={() => setCreateOpen(false)}
+          onApplied={() => {
+            setCreateOpen(false)
+            onCreated?.()
+          }}
+          secretWarning={createKind === 'secret'}
+          kind={createKind}
+        />
       )}
     </div>
   )

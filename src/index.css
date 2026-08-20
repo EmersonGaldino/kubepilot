@@ -187,6 +187,41 @@ textarea:focus-visible {
   animation: kp-drawer-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.kp-palette-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  padding-top: 14vh;
+  background: rgb(0 0 0 / 0.52);
+  animation: kp-fade-in 140ms ease-out;
+}
+
+.kp-palette {
+  display: flex;
+  height: fit-content;
+  max-height: min(28rem, 70vh);
+  width: min(560px, 92vw);
+  flex-direction: column;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 0.75rem;
+  background: var(--color-surface-1);
+  box-shadow: var(--shadow-panel);
+  animation: kp-palette-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes kp-palette-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .kp-card {
   border: 1px solid var(--color-border-subtle);
   border-radius: 0.75rem;
@@ -236,63 +271,128 @@ textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .kp-scrim,
   .kp-drawer,
+  .kp-palette-scrim,
+  .kp-palette,
   .kp-row,
-  .animate-splash-spin,
-  .animate-splash-spin-reverse,
-  .animate-splash-float,
-  .animate-splash-loading-bar {
+  .animate-splash-aurora,
+  .animate-splash-orbit,
+  .animate-splash-orbit-reverse,
+  .animate-splash-glow,
+  .animate-splash-loading-bar,
+  .animate-splash-text-fade {
     animation: none !important;
     transition: none !important;
   }
 }
 
-/* Splash screen: a handful of pure-CSS 3D cubes tumbling in the background
- * (see `SplashScreen.tsx`). `perspective` on the scene's parent is what
- * makes the `rotateX`/`rotateY` on its `preserve-3d` child actually read as
- * depth instead of a flat skew. */
-.splash-perspective {
-  perspective: 1200px;
+/* Splash screen (see `SplashScreen.tsx`): a quiet "control plane" motif —
+ * two blurred aurora blobs drifting behind a faint dot-grid, an orbit ring
+ * halo breathing around the mark, and a slim gradient progress sweep. Kept
+ * to one cohesive animated motif (not several independently-animated
+ * elements) so it reads as calm and deliberate rather than busy. */
+.splash-grid {
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--color-fg) 14%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, black 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, black 40%, transparent 100%);
 }
 
-.splash-cube-scene {
-  transform-style: preserve-3d;
-  position: relative;
-}
-
-.splash-cube-face {
+.splash-aurora {
   position: absolute;
-  inset: 0;
-  border: 1px solid color-mix(in srgb, var(--face-color, #3b82f6) 45%, transparent);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--face-color, #3b82f6) 22%, transparent), transparent);
-  backdrop-filter: blur(1px);
+  border-radius: 9999px;
+  filter: blur(72px);
+  will-change: transform, opacity;
 }
 
-@keyframes splash-spin {
-  from {
-    transform: rotateX(0deg) rotateY(0deg);
-  }
-  to {
-    transform: rotateX(360deg) rotateY(360deg);
-  }
-}
-
-@keyframes splash-spin-reverse {
-  from {
-    transform: rotateX(0deg) rotateY(0deg);
-  }
-  to {
-    transform: rotateX(-360deg) rotateY(300deg);
-  }
-}
-
-@keyframes splash-float {
-  0%,
-  100% {
-    translate: 0 0;
+@keyframes splash-aurora-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.5;
   }
   50% {
-    translate: 0 -22px;
+    transform: translate(4%, -6%) scale(1.12);
+    opacity: 0.7;
   }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.5;
+  }
+}
+
+.animate-splash-aurora {
+  animation: splash-aurora-drift 14s ease-in-out infinite;
+}
+
+/* Orbit halo: two rings around the app mark, each with a small bright
+ * "satellite" dot riding the rim — a literal nod to piloting/orbiting a
+ * cluster, and a single strong focal animation instead of several. */
+.splash-orbit-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.splash-orbit-ring::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-accent-hover);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--color-accent-hover) 80%, transparent);
+}
+
+@keyframes splash-orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes splash-orbit-spin-reverse {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.animate-splash-orbit {
+  animation: splash-orbit-spin 9s linear infinite;
+}
+
+.animate-splash-orbit-reverse {
+  animation: splash-orbit-spin-reverse 15s linear infinite;
+}
+
+.splash-icon-glow {
+  position: absolute;
+  inset: -14px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-accent) 45%, transparent), transparent 70%);
+  filter: blur(10px);
+}
+
+@keyframes splash-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.05);
+  }
+}
+
+.animate-splash-glow {
+  animation: splash-glow-pulse 3.2s ease-in-out infinite;
 }
 
 @keyframes splash-loading-bar {
@@ -304,18 +404,21 @@ textarea:focus-visible {
   }
 }
 
-.animate-splash-spin {
-  animation: splash-spin 16s linear infinite;
-}
-
-.animate-splash-spin-reverse {
-  animation: splash-spin-reverse 22s linear infinite;
-}
-
-.animate-splash-float {
-  animation: splash-float 6s ease-in-out infinite;
-}
-
 .animate-splash-loading-bar {
   animation: splash-loading-bar 1.3s ease-in-out infinite;
+}
+
+@keyframes splash-text-fade {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-splash-text-fade {
+  animation: splash-text-fade 400ms ease-out;
 }

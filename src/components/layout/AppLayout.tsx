@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 
 import { SplashScreen } from '@/components/splash/SplashScreen'
+import { APP_ICON_URL } from '@/lib/appIcon'
 import { useKubepilotBootstrap } from '@/hooks/useKubepilotBootstrap'
 import { useSplashGate } from '@/hooks/useSplashGate'
 import { useTrayNavigation } from '@/hooks/useTrayNavigation'
 
 import { AboutDialog } from './AboutDialog'
+import { CommandPalette } from './CommandPalette'
 import { SettingsDrawer } from './SettingsDrawer'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
+import { UpdateToast } from './UpdateToast'
 
 // Minimum time the splash stays up even if the kubeconfig read finishes
 // sooner — long enough to register as a deliberate loading screen, short
@@ -30,6 +33,10 @@ export function AppLayout() {
 
   useEffect(() => {
     if (!splashReady) return
+    // The traffic lights are hidden (see electron/window.ts) while the
+    // splash covers them — reveal them as it starts fading rather than
+    // waiting for the unmount below, so they're back by the time it's gone.
+    window.kubepilot.window.notifySplashDone()
     const timer = setTimeout(() => setSplashMounted(false), SPLASH_FADE_MS)
     return () => clearTimeout(timer)
   }, [splashReady])
@@ -47,13 +54,14 @@ export function AppLayout() {
           className="no-drag flex items-center gap-2 rounded-md px-2 py-1 transition-colors duration-150 hover:bg-white/[0.06]"
           title="About KubePilot"
         >
-          <img src="/app-icon.png" alt="" className="h-5 w-5 rounded-md" />
+          <img src={APP_ICON_URL} alt="" className="h-5 w-5 rounded-md" />
           <span className="text-sm font-semibold tracking-tight text-fg">KubePilot</span>
         </button>
       </div>
 
       {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
       <SettingsDrawer />
+      <CommandPalette />
 
       <div className="flex min-h-0 flex-1">
         <Sidebar />
@@ -66,6 +74,7 @@ export function AppLayout() {
       </div>
 
       {splashMounted && <SplashScreen fadingOut={splashReady} />}
+      <UpdateToast />
     </div>
   )
 }

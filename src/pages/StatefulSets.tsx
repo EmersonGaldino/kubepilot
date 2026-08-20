@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { ResourcePage } from '@/components/common/ResourcePage'
 import { StatefulSetDetailsDrawer } from '@/components/statefulsets/StatefulSetDetailsDrawer'
 import { StatefulSetTable } from '@/components/statefulsets/StatefulSetTable'
+import { useResourceFocus } from '@/hooks/useResourceFocus'
+import { useClusterStore } from '@/stores/useClusterStore'
 import { useNamespaceStore } from '@/stores/useNamespaceStore'
 import { useStatefulSetStore } from '@/stores/useStatefulSetStore'
 import type { StatefulSetSummary } from '@shared/types'
@@ -23,17 +25,21 @@ export function StatefulSets() {
   const selectedStatefulSetStatus = useStatefulSetStore((s) => s.selectedStatefulSetStatus)
 
   const namespaceFilter = useNamespaceStore((s) => s.selected)
+  const currentContext = useClusterStore((s) => s.currentContext)
+  const refreshGeneration = useClusterStore((s) => s.refreshGeneration)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     void loadStatefulSets(namespaceFilter)
-  }, [namespaceFilter, loadStatefulSets])
+  }, [namespaceFilter, loadStatefulSets, currentContext, refreshGeneration])
 
   const handleSelect = (statefulSet: StatefulSetSummary) => {
     setDrawerOpen(true)
     void loadStatefulSetDetail(statefulSet.namespace, statefulSet.name)
   }
+
+  useResourceFocus('statefulsets', statefulsets, (s) => s.name, handleSelect)
 
   const handleClose = () => {
     setDrawerOpen(false)
@@ -50,6 +56,8 @@ export function StatefulSets() {
         status={status}
         error={error}
         onRetry={() => void loadStatefulSets(namespaceFilter)}
+        createKind="statefulset"
+        onCreated={() => void loadStatefulSets(namespaceFilter)}
         emptyIcon={Database}
         emptyTitle="No statefulsets found"
         emptyDescription="This namespace has no statefulsets, or the cluster is empty."

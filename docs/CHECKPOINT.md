@@ -23,7 +23,7 @@ Público: operador de cluster (densidade alta, dark-first, teclado, feedback rá
 | Main process | `electron/` | Único lugar com Node, `@kubernetes/client-node`, filesystem |
 | Preload | `electron/preload.ts` | `contextBridge` estreito; sem `ipcRenderer` cru no renderer |
 | Contrato IPC | `shared/ipc-contract.ts` | Nomes de canal + `KubepilotApi`; `{ ok, data } \| { ok: false, error }` |
-| Tipos de domínio | `shared/types.ts` | Tipos compartilhados, zero runtime |
+| Tipos de domínio | `shared/types.ts` | Tipos compartilhados + helpers puros (`isClusterScopedKind`) |
 | Renderer | `src/` | React 19, Zustand, React Router (`HashRouter` por causa de `file://`) |
 | UI | `src/index.css` + `src/components/` | Tailwind v4, Lucide, tokens semânticos |
 
@@ -58,15 +58,19 @@ Rotas em `src/router.tsx`:
 
 | Rota | Recurso | Notas |
 |---|---|---|
-| `/` | Dashboard | Hero do cluster, stats, pods/namespace, pods com problema |
-| `/pods` | Pods | Drawer: logs, exec (linha a linha, não PTY), describe, delete |
-| `/deployments` | Deployments | Scale, restart, logs do seletor, describe, delete |
+| `/` | Dashboard | Hero do cluster; cards Nodes/Namespaces são links |
+| `/nodes` | Nodes | Ready, roles, kubelet, allocatable; drawer: conditions/taints/pods; Cordon |
+| `/namespaces` | Namespaces | Página de gestão (além do combobox); create/delete |
+| `/pods` | Pods | Logs, exec (linha a linha, não PTY), port-forward, describe/apply, delete |
+| `/deployments` | Deployments | Scale, restart, logs do seletor, describe/apply, delete |
 | `/statefulsets` `/daemonsets` `/replicasets` | Controllers | Mesmo `WorkloadStatus` |
 | `/jobs` `/cronjobs` | Jobs | Status próprio no Job; CronJob tem schedule/suspended |
-| `/services` `/configmaps` `/secrets` `/events` | Config / rede / feed | Events são list-only (sem drawer). Secrets mascaram valor com reveal |
-| `/logs` | Logs | Fetch + stream; follow; filtro de nível; highlight; multi-pod por label selector |
+| `/services` `/ingresses` `/hpa` | Rede / escala | HPA não inventa CPU se métricas falharem (`null` + “Metrics unavailable”) |
+| `/pvcs` `/pvs` `/storageclasses` | Storage | Delete de PVC com aviso de perda de dados |
+| `/configmaps` `/secrets` `/events` | Config / feed | Events list-only. Secrets mascarados; YAML apply revela |
+| `/logs` | Logs | Fetch + stream; follow; filtro de nível |
 
-Ações destrutivas passam por `ConfirmDialog`. YAML de describe por `DescribeModal`.
+Ações destrutivas passam por `ConfirmDialog`. YAML via `DescribeModal` (Monaco + monaco-yaml: IntelliSense, validação e Format; Apply + dry-run). **New YAML** nas `ResourcePage`. Troca de context zera stores (`resetAllResourceStores`); Refresh/tray recarregam a rota atual (`refreshCurrentView`). Forbidden vira mensagem de RBAC no `ErrorState`.
 
 ### Segurança (já no app)
 
@@ -130,7 +134,7 @@ Focus visível global (`:focus-visible`). `button` tem `cursor: pointer`.
 1. **Listas** usam `ResourcePage` + `getSearchText` estável (função no módulo, não inline).
 2. **Tabelas** usam `className="kp-table"` e `SelectableRow` (Events é só leitura, sem row select).
 3. **Drawers** usam `<Drawer title onClose>`. Confirmação/Describe/Exec/About fecham no Escape **antes** do drawer.
-4. **Dashboard:** cards Pods / Deployments / Services são links. Pod com problema navega para `/logs` com `LogsPageTarget`.
+4. **Dashboard:** cards Pods / Nodes / Namespaces / Deployments / Services são links. Pod com problema navega para `/logs` com `LogsPageTarget`.
 5. **Sidebar:** busca de clusters só aparece com **mais de 4** contexts. Rename/favorito visíveis em `:hover` **e** `:focus-within`.
 6. **Events:** chips All / Warning / Normal no toolbar do `ResourcePage`.
 7. **Main** é `overflow-hidden`; quem rola é a página (`Dashboard` / `Logs`) ou `.kp-table-wrap`. Coluna central precisa de `min-h-0`.
@@ -178,9 +182,10 @@ Exige kubeconfig válido. O que `kubectl config get-contexts` lista é o que a s
 
 ---
 
-## 7. Próximos passos de produto (já no README)
+## 7. Próximos passos de produto
 
 1. Settings reais (intervalos, atalhos).
-2. Phase 4: notificações macOS, ⌘K, auto-refresh com cache.
-3. Code signing / notarization.
-4. Validar label EKS contra um cluster real (classificação já existe).
+2. Command palette (⌘K), PTY/xterm, notificações, auto-refresh.
+3. Drain de node, CRDs genéricos, NetworkPolicy/PDB dedicados (hoje via YAML apply).
+4. Code signing / notarization.
+5. Virtualizar tabelas grandes se um list passar de ~2k linhas.

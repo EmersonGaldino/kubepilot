@@ -11,10 +11,12 @@ interface ClusterState {
   contextsStatus: RequestStatus
   infoStatus: RequestStatus
   error: string | null
+  refreshGeneration: number
 
   loadContexts: () => Promise<void>
   loadClusterInfo: () => Promise<void>
   refreshClusterInfo: () => Promise<void>
+  bumpRefresh: () => void
   switchContext: (contextName: string) => Promise<void>
   applyContextsSnapshot: (snapshot: { contexts: KubeContext[]; currentContext: string | null }) => void
 }
@@ -26,6 +28,7 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
   contextsStatus: 'idle',
   infoStatus: 'idle',
   error: null,
+  refreshGeneration: 0,
 
   applyContextsSnapshot: (snapshot) => {
     set({ contexts: snapshot.contexts, currentContext: snapshot.currentContext, contextsStatus: 'success' })
@@ -73,6 +76,8 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
       set({ infoStatus: 'error', error: error instanceof Error ? error.message : String(error) })
     }
   },
+
+  bumpRefresh: () => set((state) => ({ refreshGeneration: state.refreshGeneration + 1 })),
 
   switchContext: async (contextName: string) => {
     set({ contextsStatus: 'loading', error: null })

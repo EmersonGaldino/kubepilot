@@ -68,11 +68,12 @@ jobs:
           name: kubepilot-${{ matrix.artifact-name }}
           path: |
             release/*.dmg
+            release/*.zip
             release/*.exe
             release/*.AppImage
             release/*.deb
             release/*.blockmap
-            release/*.yml
+            release/latest*.yml
           if-no-files-found: ignore
 
   release:

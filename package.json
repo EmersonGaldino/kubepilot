@@ -2,7 +2,10 @@
   "name": "kubepilot",
   "version": "1.0.1",
   "description": "KubePilot — a fast, modern desktop manager for multiple Kubernetes clusters",
-  "author": "KubePilot",
+  "author": {
+    "name": "KubePilot",
+    "email": "emersongaldino@hotmail.com"
+  },
   "license": "UNLICENSED",
   "private": true,
   "main": "dist-electron/main.js",

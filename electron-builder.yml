@@ -44,6 +44,10 @@ mac:
         - arm64
         - x64
   icon: build/icon.icns
+  # No ${version} on purpose: keeps a stable filename so the README can link
+  # straight to GitHub's `/releases/latest/download/<name>` for each
+  # platform/arch instead of a version-specific URL that goes stale.
+  artifactName: '${productName}-mac-${arch}.${ext}'
   # Unsigned local builds cannot use hardened runtime — macOS kills the
   # process on launch. Re-enable together with a Developer ID + notarization.
   hardenedRuntime: false
@@ -68,6 +72,8 @@ win:
   # electron-builder generates the .ico from this PNG (needs to be >=256px)
   # so there's no separately-maintained Windows icon asset to go stale.
   icon: build/icon.png
+  # See the `mac.artifactName` comment — same stable-filename reasoning.
+  artifactName: '${productName}-win-${arch}.${ext}'
 
 nsis:
   oneClick: false
@@ -87,3 +93,5 @@ linux:
         - arm64
   icon: build/icon.png
   category: Development
+  # See the `mac.artifactName` comment — same stable-filename reasoning.
+  artifactName: '${productName}-linux-${arch}.${ext}'

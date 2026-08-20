@@ -60,6 +60,11 @@ mac:
   gatekeeperAssess: false
   identity: null
 
+# Ad-hoc signs the .app after packaging — see scripts/afterSign.cjs for why
+# this isn't optional on Apple Silicon (unlike Gatekeeper's opinion on x64,
+# it's a hard OS requirement there, and its absence is what "damaged" meant).
+afterSign: scripts/afterSign.cjs
+
 dmg:
   title: 'KubePilot ${version}'
   contents:

@@ -40,6 +40,8 @@ const LEVEL_ALIASES: Record<string, LogLevel> = {
   FATAL: 'FTL',
   CRITICAL: 'FTL',
   CRIT: 'FTL',
+  EMERGENCY: 'FTL',
+  ALERT: 'FTL',
   FTL: 'FTL',
 }
 
@@ -60,17 +62,27 @@ const LINE_PATTERN = new RegExp(
   'i',
 )
 
-const JSON_LEVEL_KEYS = ['level', 'lvl', 'severity', 'loglevel', '@l']
-const JSON_TIME_KEYS = ['timestamp', 'time', 'ts', '@t', 'asctime']
+const JSON_LEVEL_KEYS = ['level', 'lvl', 'severity', 'loglevel', '@l', 'levelname']
+const JSON_TIME_KEYS = ['timestamp', 'time', 'ts', '@t', 'asctime', 'timegenerated']
 const JSON_MESSAGE_KEYS = ['message', 'msg', '@m', '@mt', 'text']
 
 function firstStringField(obj: Record<string, unknown>, keys: string[]): string | null {
+  const normalized = new Map(Object.entries(obj).map(([key, value]) => [key.toLowerCase(), value]))
   for (const key of keys) {
-    const value = obj[key]
+    const value = normalized.get(key.toLowerCase())
     if (typeof value === 'string' && value.length > 0) return value
     if (typeof value === 'number') return String(value)
   }
   return null
+}
+
+/** Containerd/CRI prefixes every stdout/stderr record with a timestamp,
+ * stream and flag. AKS commonly returns these records unchanged through its
+ * logging path, so strip only that envelope before parsing the application's
+ * actual Serilog/.NET/JSON entry. The original raw line is still retained. */
+function unwrapCriLine(raw: string): string {
+  const match = raw.match(/^\d{4}-\d{2}-\d{2}T[^\s]+\s+(?:stdout|stderr)\s+[FP]\s?(.*)$/i)
+  return match?.[1] ?? raw
 }
 
 function tryParseJsonLine(raw: string): ParsedLogLine | null {
@@ -107,22 +119,31 @@ function tryParseJsonLine(raw: string): ParsedLogLine | null {
  * `{ level: null, message: raw }` when nothing recognizable is found —
  * every log line still renders, just without the extra structure. */
 export function parseLogLine(raw: string): ParsedLogLine {
-  const asJson = tryParseJsonLine(raw)
-  if (asJson) return asJson
+  const payload = unwrapCriLine(raw)
+  const asJson = tryParseJsonLine(payload)
+  if (asJson) return { ...asJson, raw }
 
-  const match = raw.match(LINE_PATTERN)
+  const match = payload.match(LINE_PATTERN)
   const level = match?.groups?.level ? (LEVEL_ALIASES[match.groups.level.toUpperCase()] ?? null) : null
+
+  // Nginx and many Linux workloads use a non-ISO timestamp before the
+  // bracketed level (`2026/08/20 12:01:02 [error] ...`). The timestamp
+  // format is intentionally not prescribed here; the bracket makes this a
+  // safe severity signal without colouring an ordinary sentence containing
+  // the word "error".
+  const bracketed = payload.match(/\[(?<level>TRACE|VERBOSE|VRB|DEBUG|DBG|INFO|INFORMATION|INF|WARN|WARNING|WRN|ERROR|ERR|FATAL|CRITICAL|CRIT|EMERGENCY|ALERT|FTL)\]\s*(?<rest>.*)$/i)
+  const bracketedLevel = bracketed?.groups?.level ? (LEVEL_ALIASES[bracketed.groups.level.toUpperCase()] ?? null) : null
 
   // Guards against the regex's optional groups matching an empty prefix on
   // a line that has no level at all (e.g. a stack trace continuation) —
   // treat those as plain, unparsed lines rather than a false-positive match.
-  if (!level) return { raw, timestamp: null, level: null, message: raw, properties: [] }
+  if (!level && !bracketedLevel) return { raw, timestamp: null, level: null, message: raw, properties: [] }
 
   return {
     raw,
     timestamp: match?.groups?.ts ?? null,
-    level,
-    message: match?.groups?.rest ?? raw,
+    level: level ?? bracketedLevel,
+    message: level ? (match?.groups?.rest ?? payload) : (bracketed?.groups?.rest ?? payload),
     properties: [],
   }
 }

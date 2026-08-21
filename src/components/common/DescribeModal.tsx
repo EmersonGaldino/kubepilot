@@ -4,7 +4,10 @@ import type { editor } from 'monaco-editor'
 
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { kubernetesApi } from '@/services/kubernetesApi'
+import { useClusterPrefsStore } from '@/stores/useClusterPrefsStore'
+import { useClusterStore } from '@/stores/useClusterStore'
 import type { ApplyResult, DescribableKind } from '@shared/types'
 
 import { ConfirmDialog } from './ConfirmDialog'
@@ -47,7 +50,14 @@ export function DescribeModal({
   const [applyMessage, setApplyMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmApply, setConfirmApply] = useState(false)
+  const [forceOwnership, setForceOwnership] = useState(false)
+  const [validatedDraft, setValidatedDraft] = useState<string | null>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const currentContext = useClusterStore((state) => state.currentContext)
+  const clusterProfile = useClusterPrefsStore((state) => (currentContext ? state.profiles[currentContext] : undefined))
+
+  useFocusTrap(dialogRef, open && !confirmApply)
 
   useEffect(() => {
     if (!open || confirmApply) return
@@ -70,6 +80,8 @@ export function DescribeModal({
     setDraft(yaml ?? '')
     setApplyError(null)
     setApplyMessage(null)
+    setForceOwnership(false)
+    setValidatedDraft(null)
   }, [yaml, open])
 
   if (!open) return null
@@ -88,18 +100,23 @@ export function DescribeModal({
     void editorRef.current?.getAction('editor.action.formatDocument')?.run()
   }
 
+  const resourceName = yaml?.match(/^metadata:\s*\n(?:.*\n)*?\s+name:\s*([^\s#]+)/m)?.[1] ?? title.split(' · ')[0]
+  const production = clusterProfile === 'production'
+  const needsDryRun = validatedDraft !== text
+
   const runApply = async (dryRun: boolean) => {
     setBusy(true)
     setApplyError(null)
     setApplyMessage(null)
     try {
-      const result: ApplyResult = await kubernetesApi.apply.run({ yaml: text, dryRun })
+      const result: ApplyResult = await kubernetesApi.apply.run({ yaml: text, dryRun, force: forceOwnership })
       const action = result.created ? 'created' : 'applied'
       setApplyMessage(
         dryRun
           ? `Dry-run OK — would ${action} ${result.kind}/${result.name}`
           : `${result.kind}/${result.name} ${action}`,
       )
+      if (dryRun) setValidatedDraft(text)
       if (!dryRun) onApplied?.()
     } catch (err) {
       setApplyError(err instanceof Error ? err.message : String(err))
@@ -112,6 +129,7 @@ export function DescribeModal({
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6" onClick={onClose}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="describe-title"
@@ -150,7 +168,10 @@ export function DescribeModal({
           )}
           <YamlEditor
             value={text}
-            onChange={setDraft}
+            onChange={(value) => {
+              setDraft(value)
+              if (value !== validatedDraft) setValidatedDraft(null)
+            }}
             readOnly={readOnly || loading}
             kind={kind}
             onReady={(instance) => {
@@ -162,15 +183,29 @@ export function DescribeModal({
               {applyError ?? applyMessage}
             </p>
           )}
+          {!readOnly && needsDryRun && text && !loading && (
+            <p className="shrink-0 text-xs text-warning">Run dry-run after every YAML change before applying it.</p>
+          )}
         </div>
         {!readOnly && (
-          <div className="flex shrink-0 justify-end gap-2 border-t border-border-subtle px-4 py-3">
-            <Button variant="ghost" disabled={busy || loading || !text} onClick={() => void runApply(true)}>
-              Dry-run
-            </Button>
-            <Button variant="primary" disabled={busy || loading || !text} onClick={() => setConfirmApply(true)}>
-              Apply
-            </Button>
+          <div className="flex shrink-0 items-center justify-between gap-4 border-t border-border-subtle px-4 py-3">
+            <label className="flex items-center gap-2 text-xs text-fg-muted">
+              <input
+                type="checkbox"
+                checked={forceOwnership}
+                disabled={busy || loading}
+                onChange={(event) => setForceOwnership(event.target.checked)}
+              />
+              Force ownership conflicts
+            </label>
+            <div className="flex gap-2">
+              <Button variant="ghost" disabled={busy || loading || !text} onClick={() => void runApply(true)}>
+                Dry-run
+              </Button>
+              <Button variant="primary" disabled={busy || loading || !text || needsDryRun} onClick={() => setConfirmApply(true)}>
+                Apply
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -178,10 +213,15 @@ export function DescribeModal({
       <ConfirmDialog
         open={confirmApply}
         title="Apply this YAML?"
-        message="This overwrites the live object in the cluster (or creates it if it does not exist)."
+        message={
+          forceOwnership
+            ? 'This overwrites the live object and takes ownership of conflicting fields managed by another controller.'
+            : 'This applies the YAML to the live object (or creates it if it does not exist). Ownership conflicts are rejected.'
+        }
         confirmLabel="Apply"
         danger={false}
         busy={busy}
+        confirmationText={production ? resourceName : undefined}
         onConfirm={() => void runApply(false)}
         onCancel={() => setConfirmApply(false)}
       />

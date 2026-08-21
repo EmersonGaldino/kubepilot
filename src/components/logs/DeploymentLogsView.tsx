@@ -161,6 +161,7 @@ function PodLogPane({
         query={query}
         emptyMessage={query || levelFilter !== 'ALL' ? 'No lines match your search.' : 'No log output yet.'}
         podName={pod.name}
+        following
       />
     </div>
   )

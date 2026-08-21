@@ -1,15 +1,18 @@
-import { Download, ScrollText, Trash2 } from 'lucide-react'
+import { Download, FolderSearch, ScrollText, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
-import { EmptyState } from '@/components/common/EmptyState'
 import { DeploymentLogsView, type LogsPageGroupTarget } from '@/components/logs/DeploymentLogsView'
 import { LogViewer } from '@/components/logs/LogViewer'
+import { PodLogTargetPicker } from '@/components/logs/PodLogTargetPicker'
 import { Button } from '@/components/ui/Button'
+import { Drawer } from '@/components/ui/Drawer'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { ALL_LOG_LEVELS, logLineMatchesFilter, type LogLevelFilter } from '@/lib/logLineParser'
 import { kubernetesApi } from '@/services/kubernetesApi'
-import { ALL_NAMESPACES, useNamespaceStore } from '@/stores/useNamespaceStore'
+import { useNamespaceStore } from '@/stores/useNamespaceStore'
+import { useClusterStore } from '@/stores/useClusterStore'
+import { useWorkspaceStore } from '@/stores/useWorkspaceStore'
 import { usePodStore } from '@/stores/usePodStore'
 
 export interface LogsPageTarget {
@@ -55,6 +58,11 @@ export function Logs() {
 function SinglePodLogs({ navTarget }: { navTarget: LogsPageTarget | null }) {
   const namespaceFilter = useNamespaceStore((s) => s.selected)
   const pods = usePodStore((s) => s.pods)
+  const podsStatus = usePodStore((s) => s.status)
+  const loadPods = usePodStore((s) => s.loadPods)
+  const currentContext = useClusterStore((s) => s.currentContext)
+  const addActivity = useWorkspaceStore((s) => s.addOrUpdate)
+  const setActivityState = useWorkspaceStore((s) => s.setState)
 
   const [target, setTarget] = useState<LogsPageTarget | null>(navTarget)
   const [containers, setContainers] = useState<string[]>(navTarget?.containerName ? [navTarget.containerName] : [])
@@ -66,9 +74,22 @@ function SinglePodLogs({ navTarget }: { navTarget: LogsPageTarget | null }) {
   const [streamError, setStreamError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [levelFilter, setLevelFilter] = useState<LogLevelFilter>('ALL')
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  const activityId = target ? `logs:${target.namespace}/${target.podName}:${target.containerName ?? ''}` : null
+
+  useEffect(() => {
+    if (!target || !activityId) return
+    addActivity({ id: activityId, kind: 'logs', state: following ? 'live' : 'idle', title: `Logs · ${target.podName}`, contextName: currentContext, namespace: target.namespace, resourceName: target.podName, containerName: target.containerName, route: '/logs' })
+    return () => setActivityState(activityId, 'ended')
+  }, [activityId, addActivity, currentContext, following, setActivityState, target])
 
   const streamIdRef = useRef<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (currentContext) void loadPods(namespaceFilter)
+  }, [currentContext, loadPods, namespaceFilter])
 
   // Look up the full container list whenever the target pod changes, so the
   // container picker works even when landing here from the tray/picker
@@ -80,6 +101,11 @@ function SinglePodLogs({ navTarget }: { navTarget: LogsPageTarget | null }) {
       (detail) => {
         if (cancelled) return
         setContainers(detail.containers.map((c) => c.name))
+        setTarget((current) => {
+          if (!current || current.namespace !== target.namespace || current.podName !== target.podName || current.containerName) return current
+          const firstContainer = detail.containers[0]?.name
+          return firstContainer ? { ...current, containerName: firstContainer } : current
+        })
       },
       () => undefined,
     )
@@ -181,37 +207,34 @@ function SinglePodLogs({ navTarget }: { navTarget: LogsPageTarget | null }) {
   }
 
   if (!target) {
-    const pickablePods = namespaceFilter === ALL_NAMESPACES ? pods : pods.filter((p) => p.namespace === namespaceFilter)
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6">
-        <EmptyState icon={ScrollText} title="No pod selected" description="Pick a pod to stream its logs, or open Logs from a Pod's details." />
-        {pickablePods.length > 0 && (
-          <select
-            aria-label="Select a pod"
-            className="kp-control min-w-72"
-            defaultValue=""
-            onChange={(e) => {
-              const [namespace, podName] = e.target.value.split('/')
-              if (namespace && podName) setTarget({ namespace, podName })
-            }}
-          >
-            <option value="" disabled>
-              Select a pod…
-            </option>
-            {pickablePods.map((p) => (
-              <option key={`${p.namespace}/${p.name}`} value={`${p.namespace}/${p.name}`}>
-                {p.namespace}/{p.name}
-              </option>
-            ))}
-          </select>
-        )}
+      <div className="flex min-h-0 flex-1 flex-col p-5">
+        <PodLogTargetPicker
+          pods={pods}
+          namespaceFilter={namespaceFilter}
+          loading={podsStatus === 'loading'}
+          onSelect={(pod) => setTarget({ namespace: pod.namespace, podName: pod.name })}
+        />
       </div>
     )
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 p-5">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border-subtle bg-surface-2 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border-subtle bg-surface-1 px-3 py-2.5 shadow-[0_10px_28px_-24px_rgb(0_0_0_/_0.9)]">
+        <div className="mr-auto flex min-w-0 items-center gap-2.5 pr-2">
+          <div className="rounded-md bg-accent/15 p-1.5 text-accent-hover">
+            <ScrollText className="h-4 w-4" strokeWidth={1.7} />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-fg">{target.podName}</p>
+            <p className="truncate text-xs text-fg-subtle">{target.namespace}{target.containerName ? ` · ${target.containerName}` : ''}</p>
+          </div>
+          <Button variant="ghost" onClick={() => setPickerOpen(true)} className="shrink-0">
+            <FolderSearch className="h-3.5 w-3.5" />
+            Change pod
+          </Button>
+        </div>
         {containers.length > 1 && (
           <select
             aria-label="Container"
@@ -227,15 +250,12 @@ function SinglePodLogs({ navTarget }: { navTarget: LogsPageTarget | null }) {
           </select>
         )}
 
-        <button
-          type="button"
+        <Button
+          variant={following ? 'primary' : 'secondary'}
           onClick={() => setFollowing((v) => !v)}
-          className={`inline-flex h-8 items-center rounded-md px-2.5 text-xs font-medium transition-colors duration-150 ${
-            following ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/[0.06] text-fg-muted'
-          }`}
         >
           {following ? 'Following' : 'Follow logs'}
-        </button>
+        </Button>
 
         <select
           aria-label="Tail lines"
@@ -286,13 +306,11 @@ function SinglePodLogs({ navTarget }: { navTarget: LogsPageTarget | null }) {
 
         <SearchInput value={query} onValueChange={setQuery} placeholder="Search logs…" className="w-52" />
 
-        {(query || levelFilter !== 'ALL') && (
-          <span className="text-xs tabular-nums text-fg-subtle">
-            {filteredLines.length}/{lines.length}
-          </span>
-        )}
+        <span className="rounded-md bg-white/[0.04] px-2 py-1 text-xs tabular-nums text-fg-subtle" title="Visible lines / received lines">
+          {filteredLines.length}/{lines.length}
+        </span>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5">
           <Button variant="ghost" onClick={() => setLines([])}>
             <Trash2 className="h-3.5 w-3.5" />
             Clear
@@ -315,7 +333,22 @@ function SinglePodLogs({ navTarget }: { navTarget: LogsPageTarget | null }) {
         query={query}
         emptyMessage={query || levelFilter !== 'ALL' ? 'No lines match your search.' : 'No log output yet.'}
         podName={`${target.namespace}/${target.podName}${target.containerName ? ` · ${target.containerName}` : ''}`}
+        following={following}
       />
+
+      {pickerOpen && (
+        <Drawer title="Choose a pod" subtitle="Search the current cluster" onClose={() => setPickerOpen(false)}>
+          <PodLogTargetPicker
+            pods={pods}
+            namespaceFilter={namespaceFilter}
+            loading={podsStatus === 'loading'}
+            onSelect={(pod) => {
+              setTarget({ namespace: pod.namespace, podName: pod.name })
+              setPickerOpen(false)
+            }}
+          />
+        </Drawer>
+      )}
     </div>
   )
 }

@@ -35,7 +35,7 @@ function prepareSpec(raw: unknown): KubernetesObject {
 export class ApplyService {
   constructor(private readonly clusterService: ClusterService) {}
 
-  async apply({ yaml: text, dryRun }: ApplyParams): Promise<ApplyResult> {
+  async apply({ yaml: text, dryRun, force = false }: ApplyParams): Promise<ApplyResult> {
     const parsed = yaml.load(text)
     const spec = prepareSpec(parsed)
     const { kubeConfig } = this.clusterService.getActiveBundle()
@@ -51,7 +51,7 @@ export class ApplyService {
     let created = false
     try {
       await client.read(header)
-      await client.patch(spec, undefined, dry, 'kubepilot', true, PatchStrategy.ServerSideApply)
+      await client.patch(spec, undefined, dry, 'kubepilot', force, PatchStrategy.ServerSideApply)
     } catch (error) {
       if (!isNotFound(error)) throw error
       created = true

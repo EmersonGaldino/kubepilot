@@ -6,6 +6,54 @@
 
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'error'
 
+/** Local-only classification. It is never sent to a Kubernetes cluster. */
+export type ClusterProfile = 'production' | 'staging' | 'development'
+
+export type WorkspaceActivityKind = 'logs' | 'exec' | 'yaml' | 'portforward'
+export type WorkspaceActivityState = 'live' | 'idle' | 'error' | 'ended'
+
+/** Metadata only: no log output, exec command, YAML or credentials is persisted. */
+export interface WorkspaceActivity {
+  id: string
+  kind: WorkspaceActivityKind
+  state: WorkspaceActivityState
+  title: string
+  contextName: string | null
+  namespace: string | null
+  resourceName: string | null
+  containerName?: string
+  route: string
+  createdAt: string
+}
+
+export type InvestigationSeverity = 'warning' | 'critical'
+export interface InvestigationSignal {
+  id: string
+  severity: InvestigationSeverity
+  title: string
+  detail: string
+  namespace?: string
+  resourceName?: string
+  action?: 'logs' | 'events' | 'yaml'
+}
+
+/** Local audit metadata for a non-secret Apply. YAML content is never stored. */
+export interface ApplyHistoryEntry {
+  id: string
+  createdAt: string
+  contextName?: string
+  namespace?: string
+  kind: string
+  name: string
+  action: 'created' | 'applied'
+}
+
+export type EntitlementPlan = 'free' | 'trial' | 'pro'
+export interface EntitlementState {
+  plan: EntitlementPlan
+  features: Record<string, boolean>
+}
+
 /**
  * Best-effort provider classification, derived from context/cluster naming
  * conventions. Purely cosmetic (grouping in the sidebar) — KubePilot never
@@ -507,6 +555,8 @@ export interface StorageClassDetail extends StorageClassSummary {
 export interface ApplyParams {
   yaml: string
   dryRun?: boolean
+  /** Opt in to taking over fields owned by another server-side apply manager. */
+  force?: boolean
 }
 
 export interface ApplyResult {

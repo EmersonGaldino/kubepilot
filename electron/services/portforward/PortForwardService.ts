@@ -8,6 +8,7 @@ import type { ClusterService } from '../clusters/ClusterService'
 
 interface LiveSession extends PortForwardSession {
   server: Server
+  sockets: Set<Socket>
 }
 
 export class PortForwardService {
@@ -26,8 +27,11 @@ export class PortForwardService {
     const { kubeConfig } = this.clusterService.getActiveBundle()
     const forwarder = new PortForward(kubeConfig)
     const id = randomUUID()
+    const sockets = new Set<Socket>()
 
     const server = createServer((socket: Socket) => {
+      sockets.add(socket)
+      socket.once('close', () => sockets.delete(socket))
       const run =
         params.kind === 'service'
           ? forwarder.portForwardService(params.namespace, params.name, [params.targetPort], socket, null, socket)
@@ -53,6 +57,7 @@ export class PortForwardService {
       localPort: params.localPort,
       targetPort: params.targetPort,
       server,
+      sockets,
     }
     this.sessions.set(id, session)
     return {
@@ -69,6 +74,9 @@ export class PortForwardService {
     const session = this.sessions.get(id)
     if (!session) return
     this.sessions.delete(id)
+    // `server.close()` waits for active TCP clients. Destroy them first so a
+    // stopped forward (or app exit) cannot hang behind a stale local client.
+    for (const socket of session.sockets) socket.destroy()
     await new Promise<void>((resolve) => session.server.close(() => resolve()))
   }
 

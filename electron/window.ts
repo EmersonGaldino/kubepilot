@@ -2,6 +2,8 @@ import path from 'node:path'
 
 import { app, BrowserWindow, shell } from 'electron'
 
+import { isSafeExternalUrl } from './window-security'
+
 function preloadScript(): string {
   return path.join(app.getAppPath(), 'dist-electron', 'preload.js')
 }
@@ -62,11 +64,16 @@ export function createMainWindow(): BrowserWindow {
   }
 
   // Renderer-initiated new windows (target="_blank", window.open) always go
-  // to the OS browser — the app never embeds arbitrary external sites.
+  // to the OS browser — the app never embeds arbitrary external sites. Only
+  // http(s) is allowed, never a local file or custom URI scheme.
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url)
+    if (isSafeExternalUrl(url)) void shell.openExternal(url)
     return { action: 'deny' }
   })
+
+  // The renderer is a local, bundled document. Never let an in-app navigation
+  // replace it with remote content, even if future UI content gains a link.
+  window.webContents.on('will-navigate', (event) => event.preventDefault())
 
   // `VITE_DEV_SERVER_URL` is injected by vite-plugin-electron while `npm run dev` is active.
   if (process.env.VITE_DEV_SERVER_URL) {

@@ -14,6 +14,7 @@ export function Topbar() {
   const { pathname } = useLocation()
   const clusterInfo = useClusterStore((s) => s.clusterInfo)
   const clusterAlias = useClusterPrefsStore((s) => (clusterInfo ? s.aliases[clusterInfo.contextName] : undefined))
+  const profile = useClusterPrefsStore((s) => (clusterInfo ? s.profiles[clusterInfo.contextName] : undefined))
   const namespaces = useNamespaceStore((s) => s.namespaces)
   const selectedNamespace = useNamespaceStore((s) => s.selected)
   const selectNamespace = useNamespaceStore((s) => s.select)
@@ -32,11 +33,12 @@ export function Topbar() {
   }, [pathname, selectedNamespace])
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-subtle bg-surface-0/80 px-4">
+    <header className="relative z-40 flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-subtle bg-surface-0/95 px-4 backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-3">
         <span className="truncate text-sm font-medium text-fg">
           {clusterAlias ?? clusterInfo?.contextName ?? 'No cluster selected'}
         </span>
+        {profile && <ClusterProfileBadge profile={profile} />}
         {clusterInfo && <ConnectionStatusBadge status={clusterInfo.status} />}
       </div>
 
@@ -49,4 +51,10 @@ export function Topbar() {
       </div>
     </header>
   )
+}
+
+function ClusterProfileBadge({ profile }: { profile: 'production' | 'staging' | 'development' }) {
+  const label = profile === 'production' ? 'PRODUCTION' : profile === 'staging' ? 'STAGING' : 'DEVELOPMENT'
+  const className = profile === 'production' ? 'border-red-500/35 bg-red-500/10 text-red-300' : profile === 'staging' ? 'border-amber-500/35 bg-amber-500/10 text-amber-300' : 'border-blue-500/35 bg-blue-500/10 text-blue-300'
+  return <span className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${className}`}>{label}</span>
 }

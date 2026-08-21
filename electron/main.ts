@@ -94,6 +94,7 @@ function startApp(): void {
     isQuitting = true
     services.logsService.stopAll()
     services.execService.stopAll()
+    void services.portForwardService.stopAll()
     services.clusterService.dispose()
     tray?.destroy()
   })

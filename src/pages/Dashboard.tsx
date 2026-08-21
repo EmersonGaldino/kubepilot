@@ -1,4 +1,4 @@
-import { AlertCircle, Boxes, Layers, Network, ServerCog, SquareStack } from 'lucide-react'
+import { AlertCircle, Boxes, FileCode2, Layers, Network, ScrollText, ServerCog, SquareStack } from 'lucide-react'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -14,6 +14,7 @@ import type { LogsPageTarget } from '@/pages/Logs'
 import { useClusterPrefsStore } from '@/stores/useClusterPrefsStore'
 import { useClusterStore } from '@/stores/useClusterStore'
 import type { ClusterProvider } from '@shared/types'
+import type { InvestigationSignal } from '@shared/types'
 
 const PROVIDER_LABEL: Record<ClusterProvider, string> = {
   aks: 'Azure Kubernetes Service',
@@ -65,6 +66,31 @@ export function Dashboard() {
     [pods],
   )
 
+  const investigationSignals = useMemo<InvestigationSignal[]>(() => {
+    const podSignals = problemPods.map((pod) => ({
+      id: `pod:${pod.namespace}/${pod.name}`,
+      severity: pod.phase === 'Failed' ? 'critical' as const : 'warning' as const,
+      title: pod.name,
+      detail: pod.phase === 'Pending' ? 'Pod is pending scheduling or startup.' : pod.restarts > 3 ? `${pod.restarts} restarts detected.` : `Pod is ${pod.phase}.`,
+      namespace: pod.namespace,
+      resourceName: pod.name,
+      action: 'logs' as const,
+    }))
+    const rolloutSignals = deployments
+      .filter((deployment) => deployment.status === 'Unavailable' || deployment.status === 'Updating')
+      .slice(0, 4)
+      .map((deployment) => ({
+        id: `deployment:${deployment.namespace}/${deployment.name}`,
+        severity: deployment.status === 'Unavailable' ? 'critical' as const : 'warning' as const,
+        title: deployment.name,
+        detail: deployment.status === 'Unavailable' ? 'Deployment has unavailable replicas.' : 'Rollout is still progressing.',
+        namespace: deployment.namespace,
+        resourceName: deployment.name,
+        action: 'yaml' as const,
+      }))
+    return [...podSignals, ...rolloutSignals].slice(0, 8)
+  }, [deployments, problemPods])
+
   if (infoStatus === 'error' && error) {
     return <ErrorState message={error} onRetry={() => void refreshClusterInfo()} />
   }
@@ -84,10 +110,11 @@ export function Dashboard() {
 
   return (
     <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
-      <section className="kp-card p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <section className="kp-hero p-5">
+        <div className="relative z-10 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold tracking-tight text-fg">{clusterAlias ?? clusterInfo.contextName}</h1>
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-hover">Cluster overview</p>
+            <h1 className="text-xl font-semibold tracking-tight text-fg">{clusterAlias ?? clusterInfo.contextName}</h1>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-fg-muted">
               <ProviderIcon provider={clusterInfo.provider} />
               {PROVIDER_LABEL[clusterInfo.provider]}
@@ -95,7 +122,7 @@ export function Dashboard() {
           </div>
           <ConnectionStatusBadge status={clusterInfo.status} />
         </div>
-        <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <dl className="relative z-10 mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <HeroField label="Kubernetes version" value={clusterInfo.kubernetesVersion ?? '—'} />
           <HeroField label="API Server" value={clusterInfo.server || '—'} title={clusterInfo.server} />
           <HeroField
@@ -205,6 +232,36 @@ export function Dashboard() {
         </div>
       </section>
 
+      <section className="kp-card">
+        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
+          <div>
+            <h2 className="flex items-center gap-1.5 text-sm font-medium text-fg"><AlertCircle className="h-4 w-4 text-warning" />Investigate</h2>
+            <p className="mt-0.5 text-xs text-fg-subtle">Start from active workload and pod health signals.</p>
+          </div>
+          <button type="button" onClick={() => navigate('/events')} className="text-xs text-accent-hover hover:text-accent">View events</button>
+        </div>
+        {investigationSignals.length === 0 ? (
+          <p className="px-4 py-6 text-sm text-fg-subtle">No immediate investigation signals were detected.</p>
+        ) : (
+          <div className="divide-y divide-border-subtle">
+            {investigationSignals.map((signal) => (
+              <div key={signal.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <span className={`h-2 w-2 rounded-full ${signal.severity === 'critical' ? 'bg-danger' : 'bg-warning'}`} />
+                <div className="min-w-44 flex-1">
+                  <p className="text-sm text-fg">{signal.title}</p>
+                  <p className="text-xs text-fg-subtle">{signal.namespace} · {signal.detail}</p>
+                </div>
+                {signal.action === 'logs' ? (
+                  <button type="button" onClick={() => signal.namespace && signal.resourceName && openPodLogs(signal.namespace, signal.resourceName)} className="inline-flex items-center gap-1 text-xs text-accent-hover hover:text-accent"><ScrollText className="h-3.5 w-3.5" />Open logs</button>
+                ) : (
+                  <button type="button" onClick={() => navigate('/deployments')} className="inline-flex items-center gap-1 text-xs text-accent-hover hover:text-accent"><FileCode2 className="h-3.5 w-3.5" />Review rollout</button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {podsStatus === 'error' && <ErrorState message="Failed to load pods for this cluster." onRetry={() => void refreshPods()} />}
     </div>
   )
@@ -212,9 +269,9 @@ export function Dashboard() {
 
 function HeroField({ label, value, title }: { label: string; value: string | number; title?: string }) {
   return (
-    <div>
-      <dt className="text-xs text-fg-subtle">{label}</dt>
-      <dd className="mt-0.5 truncate text-sm text-fg" title={title ?? String(value)}>
+    <div className="rounded-lg border border-white/[0.06] bg-black/[0.12] px-3 py-2.5">
+      <dt className="text-[11px] font-medium uppercase tracking-wide text-fg-subtle">{label}</dt>
+      <dd className="mt-1 truncate text-sm font-medium text-fg" title={title ?? String(value)}>
         {value}
       </dd>
     </div>

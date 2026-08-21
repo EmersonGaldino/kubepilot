@@ -13,6 +13,9 @@ import { SettingsDrawer } from './SettingsDrawer'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { UpdateToast } from './UpdateToast'
+import { WorkspaceShelf } from './WorkspaceShelf'
+import { OnboardingDialog } from './OnboardingDialog'
+import { useProductSettingsStore } from '@/stores/useProductSettingsStore'
 
 // Minimum time the splash stays up even if the kubeconfig read finishes
 // sooner — long enough to register as a deliberate loading screen, short
@@ -27,6 +30,7 @@ export function AppLayout() {
   useTrayNavigation()
 
   const [aboutOpen, setAboutOpen] = useState(false)
+  const onboardingComplete = useProductSettingsStore((state) => state.onboardingComplete)
 
   const splashReady = useSplashGate(SPLASH_MIN_MS)
   const [splashMounted, setSplashMounted] = useState(true)
@@ -75,6 +79,8 @@ export function AppLayout() {
 
       {splashMounted && <SplashScreen fadingOut={splashReady} />}
       <UpdateToast />
+      <WorkspaceShelf />
+      {!splashMounted && !onboardingComplete && <OnboardingDialog />}
     </div>
   )
 }

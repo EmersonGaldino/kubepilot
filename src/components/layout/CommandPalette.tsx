@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { ALL_NAV_ITEMS } from '@/lib/navigation'
 import { refreshCurrentView } from '@/lib/refreshCurrentView'
 import { iconForRoute, RESOURCE_SEARCH_KINDS } from '@/lib/resourceSearch'
@@ -85,8 +86,10 @@ function CommandPalettePanel({ onClose }: { onClose: () => void }) {
   const [resourceItems, setResourceItems] = useState<PaletteItem[]>([])
   const [resourceSearching, setResourceSearching] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEscapeKey(onClose)
+  useFocusTrap(dialogRef)
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -207,6 +210,7 @@ function CommandPalettePanel({ onClose }: { onClose: () => void }) {
   return (
     <div className="kp-palette-scrim" onClick={onClose} role="presentation">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"

@@ -20,9 +20,10 @@
     "lint": "eslint .",
     "test": "vitest run",
     "bump:version": "npm version patch --no-git-tag-version --no-commit-hooks",
-    "package": "npm run bump:version && npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
-    "package:minor": "npm version minor --no-git-tag-version --no-commit-hooks && npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
-    "package:major": "npm version major --no-git-tag-version --no-commit-hooks && npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder"
+    "package": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "package:patch": "npm run bump:version && npm run package",
+    "package:minor": "npm version minor --no-git-tag-version --no-commit-hooks && npm run package",
+    "package:major": "npm version major --no-git-tag-version --no-commit-hooks && npm run package"
   },
   "dependencies": {
     "@kubernetes/client-node": "^2.0.0",

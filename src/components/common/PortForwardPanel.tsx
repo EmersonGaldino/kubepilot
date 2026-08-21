@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/Button'
 import { kubernetesApi } from '@/services/kubernetesApi'
+import { useClusterStore } from '@/stores/useClusterStore'
+import { useWorkspaceStore } from '@/stores/useWorkspaceStore'
 import type { PortForwardSession, PortForwardTargetKind } from '@shared/types'
 
 export function PortForwardPanel({
@@ -21,6 +23,9 @@ export function PortForwardPanel({
   const [sessions, setSessions] = useState<PortForwardSession[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const currentContext = useClusterStore((state) => state.currentContext)
+  const addActivity = useWorkspaceStore((state) => state.addOrUpdate)
+  const setActivityState = useWorkspaceStore((state) => state.setState)
 
   const refresh = async () => {
     setSessions(await kubernetesApi.portforward.list())
@@ -37,7 +42,17 @@ export function PortForwardPanel({
     setBusy(true)
     setError(null)
     try {
-      await kubernetesApi.portforward.start({ kind, namespace, name, localPort, targetPort })
+      const session = await kubernetesApi.portforward.start({ kind, namespace, name, localPort, targetPort })
+      addActivity({
+        id: `portforward:${session.id}`,
+        kind: 'portforward',
+        state: 'live',
+        title: `Forward · ${name}:${localPort}`,
+        contextName: currentContext,
+        namespace,
+        resourceName: name,
+        route: `/${kind === 'service' ? 'services' : 'pods'}`,
+      })
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -51,6 +66,7 @@ export function PortForwardPanel({
     setError(null)
     try {
       await kubernetesApi.portforward.stop(id)
+      setActivityState(`portforward:${id}`, 'ended')
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

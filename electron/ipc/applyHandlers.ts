@@ -9,7 +9,10 @@ export function registerApplyHandlers(applyService: ApplyService): void {
   ipcMain.handle(IPC_CHANNELS.apply.run, (_event, params: Partial<ApplyParams>) =>
     toIpcResult(async () => {
       assertNonEmptyString(params?.yaml, 'yaml')
-      return applyService.apply({ yaml: params.yaml, dryRun: params.dryRun })
+      if (params.force !== undefined && typeof params.force !== 'boolean') {
+        throw new Error('"force" must be a boolean')
+      }
+      return applyService.apply({ yaml: params.yaml, dryRun: params.dryRun, force: params.force })
     }),
   )
 }

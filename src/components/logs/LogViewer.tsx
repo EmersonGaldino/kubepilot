@@ -19,6 +19,19 @@ const LEVEL_STYLES: Record<LogLevel, string> = {
   FTL: 'bg-red-600 text-white ring-red-500/60',
 }
 
+// The level badge alone is too easy to lose in a dense stream. These accents
+// carry the same Serilog-inspired hierarchy into the whole entry: routine
+// lines stay quiet, while warnings, errors, and fatal events gain both a
+// colored rail and a more legible message tone.
+const LINE_STYLES: Record<LogLevel, { rail: string; message: string; background: string }> = {
+  VRB: { rail: 'border-zinc-500/25', message: 'text-zinc-500', background: '' },
+  DBG: { rail: 'border-zinc-500/35', message: 'text-zinc-400', background: '' },
+  INF: { rail: 'border-blue-500/35', message: 'text-slate-200', background: '' },
+  WRN: { rail: 'border-amber-400/70', message: 'text-amber-100', background: 'bg-amber-500/[0.045]' },
+  ERR: { rail: 'border-red-400/75', message: 'text-red-100', background: 'bg-red-500/[0.055]' },
+  FTL: { rail: 'border-red-300', message: 'text-white', background: 'bg-red-600/20' },
+}
+
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -70,26 +83,48 @@ function LogLine({ raw, query }: { raw: string; query: string }) {
     // structured entry above it) — render as plain text, same as before
     // this feature existed, so nothing is ever hidden just because it
     // didn't match a known log format.
-    return <div className="whitespace-pre-wrap break-all text-fg-muted">{highlightQuery(raw, query)}</div>
+    return (
+      <div className="border-l-2 border-white/[0.08] py-0.5 pl-3 whitespace-pre-wrap break-words text-fg-muted">
+        {highlightQuery(raw, query)}
+      </div>
+    )
   }
 
+  const style = LINE_STYLES[parsed.level]
+
   return (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-px">
-      {parsed.timestamp && <span className="shrink-0 tabular-nums text-fg-subtle">{parsed.timestamp}</span>}
-      <span
-        className={clsx(
-          'shrink-0 rounded px-1 text-[11px] font-semibold tracking-wide ring-1 ring-inset',
-          LEVEL_STYLES[parsed.level],
-        )}
-      >
-        {parsed.level}
-      </span>
-      <span className="whitespace-pre-wrap break-all text-fg-muted">{renderMessageTokens(parsed.message, query)}</span>
-      {parsed.properties.map((prop) => (
-        <span key={prop.key} className="kp-chip">
-          {prop.key}=<span className="text-fg">{highlightQuery(prop.value, query)}</span>
+    <div
+      className={clsx(
+        'group rounded-r-md border-l-2 px-2 py-1 transition-colors hover:bg-white/[0.035]',
+        style.rail,
+        style.background,
+      )}
+    >
+      <div className="grid grid-cols-[minmax(0,9.5rem)_2.75rem_minmax(0,1fr)] items-start gap-x-2">
+        <span className="min-h-5 truncate pt-0.5 tabular-nums text-fg-subtle" title={parsed.timestamp ?? undefined}>
+          {parsed.timestamp ?? '—'}
         </span>
-      ))}
+        <span
+          className={clsx(
+            'mt-0.5 w-fit rounded px-1 text-[11px] font-semibold tracking-wide ring-1 ring-inset',
+            LEVEL_STYLES[parsed.level],
+          )}
+        >
+          {parsed.level}
+        </span>
+        <span className={clsx('min-w-0 whitespace-pre-wrap break-words', style.message)}>
+          {renderMessageTokens(parsed.message, query)}
+        </span>
+      </div>
+      {parsed.properties.length > 0 && (
+        <div className="ml-[12.25rem] mt-1 flex flex-wrap gap-1.5">
+          {parsed.properties.map((prop) => (
+            <span key={prop.key} className="kp-chip">
+              {prop.key}=<span className="text-fg">{highlightQuery(prop.value, query)}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -99,6 +134,7 @@ export function LogViewer({
   podName,
   query = '',
   emptyMessage = 'No log output yet.',
+  following = false,
 }: {
   lines: string[]
   podName: string
@@ -108,6 +144,8 @@ export function LogViewer({
   /** Overridable so a caller filtering `lines` can distinguish "nothing has
    * arrived yet" from "nothing matches your search/level filter". */
   emptyMessage?: string
+  /** Indicates a live `kubectl logs -f` style stream rather than a snapshot. */
+  following?: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [pinnedToBottom, setPinnedToBottom] = useState(true)
@@ -146,8 +184,19 @@ export function LogViewer({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border-subtle bg-black/40">
-      <div className="border-b border-border-subtle px-4 py-2 font-mono text-xs text-fg-subtle">{podName}</div>
-      <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-3 font-mono text-[13px] leading-relaxed">
+      <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-white/[0.02] px-4 py-2 font-mono text-xs">
+        <span className="min-w-0 truncate text-fg-muted">{podName}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="tabular-nums text-fg-subtle">{lines.length} lines</span>
+          {following && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+              Live
+            </span>
+          )}
+        </div>
+      </div>
+      <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-3 font-mono text-[13px] leading-relaxed">
         {lines.length === 0 ? (
           <p className="text-fg-subtle">{emptyMessage}</p>
         ) : (

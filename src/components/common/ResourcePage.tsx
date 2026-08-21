@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 
@@ -62,16 +63,18 @@ export function ResourcePage<T>({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border-subtle px-5 py-3">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border-subtle bg-surface-0/35 px-5 py-3">
         <div className="min-w-0 flex-1">
           <h1 className="text-base font-semibold tracking-tight text-fg">{title}</h1>
-          <p className="text-xs text-fg-muted">
-            {showingCount} {countNoun}
+          <p className="mt-1 text-xs text-fg-muted" aria-live="polite">
+            <span className="kp-chip mr-1.5 font-medium tabular-nums text-fg">{showingCount}</span>
+            {countNoun}
           </p>
         </div>
         {toolbar}
         {createKind && (
           <Button variant="primary" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-3.5 w-3.5" />
             New YAML
           </Button>
         )}

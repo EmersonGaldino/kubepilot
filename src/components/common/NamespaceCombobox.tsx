@@ -101,7 +101,10 @@ export function NamespaceCombobox({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-30 w-64 overflow-hidden rounded-lg border border-border-subtle bg-surface-2 shadow-panel">
+        <div
+          className="absolute left-0 top-[calc(100%+6px)] z-50 w-64 overflow-hidden rounded-lg border border-border-strong bg-surface-1 opacity-100 shadow-panel"
+          style={{ backgroundColor: '#11161e' }}
+        >
           <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2">
             <Search className="h-3.5 w-3.5 shrink-0 text-fg-subtle" />
             <input
@@ -110,7 +113,7 @@ export function NamespaceCombobox({
               onChange={(e) => handleQueryChange(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search namespaces…"
-              className="w-full bg-transparent text-sm text-fg placeholder:text-fg-subtle"
+              className="w-full bg-transparent text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
             />
           </div>
           <div className="max-h-72 overflow-y-auto py-1">
@@ -122,7 +125,7 @@ export function NamespaceCombobox({
                 onClick={() => commit(name)}
                 className={clsx(
                   'flex min-h-8 w-full items-center justify-between px-3 py-1.5 text-left text-sm transition-colors duration-150',
-                  index === activeIndex ? 'bg-accent/15 text-blue-200' : 'text-fg-muted',
+                  index === activeIndex ? 'bg-accent-soft text-fg' : 'text-fg-muted hover:bg-surface-3 hover:text-fg',
                 )}
               >
                 <span className="truncate">{name === ALL_NAMESPACES ? 'All namespaces' : name}</span>

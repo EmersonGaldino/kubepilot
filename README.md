@@ -151,7 +151,7 @@ npm run lint       # ESLint (flat config)
 npm run test       # Vitest — pure-logic unit tests (k8s-format, LineBuffer)
 npm run build      # Typecheck (renderer + main) then production Vite build
 npm run start       # Build, then launch the packaged app locally (no installer)
-npm run package    # Bump patch version, build, then electron-builder → installer in release/
+npm run package    # Build, then electron-builder → installer in release/
 ```
 
 `npm run dev` opens the main window immediately and creates the Tray icon; the app expects a working kubeconfig at `~/.kube/config` (or `$KUBECONFIG`). Whatever `kubectl config get-contexts` shows is exactly what appears in the sidebar's Clusters section.
@@ -159,9 +159,10 @@ npm run package    # Bump patch version, build, then electron-builder → instal
 ### Building installers locally
 
 ```bash
-npm run package          # current OS/arch only
-npm run package:minor    # same, but bumps the minor version
-npm run package:major    # same, but bumps the major version
+npm run package          # current OS/arch only; does not alter the version
+npm run package:patch    # bump patch, then package
+npm run package:minor    # bump minor, then package
+npm run package:major    # bump major, then package
 ```
 
 `electron-builder` cross-compiling from a single machine is unreliable for signed-looking installers (NSIS needs Wine on non-Windows hosts, etc.), so local `package` scripts only produce an installer for the OS you're running them on. To get all three platforms at once, use CI (below) instead of trying to cross-build locally.

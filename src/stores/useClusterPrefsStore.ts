@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { ClusterProfile } from '@shared/types'
 
 /** Per-context display preferences — a custom alias and favorite/pinned
  * status — keyed by kubeconfig context name. Purely a renderer-local UI
@@ -8,9 +9,11 @@ import { persist } from 'zustand/middleware'
 interface ClusterPrefsState {
   aliases: Record<string, string>
   favorites: Record<string, boolean>
+  profiles: Record<string, ClusterProfile>
 
   setAlias: (contextName: string, alias: string | null) => void
   toggleFavorite: (contextName: string) => void
+  setProfile: (contextName: string, profile: ClusterProfile) => void
 }
 
 export const useClusterPrefsStore = create<ClusterPrefsState>()(
@@ -18,6 +21,7 @@ export const useClusterPrefsStore = create<ClusterPrefsState>()(
     (set) => ({
       aliases: {},
       favorites: {},
+      profiles: {},
 
       setAlias: (contextName, alias) =>
         set((s) => {
@@ -34,6 +38,8 @@ export const useClusterPrefsStore = create<ClusterPrefsState>()(
           else favorites[contextName] = true
           return { favorites }
         }),
+
+      setProfile: (contextName, profile) => set((state) => ({ profiles: { ...state.profiles, [contextName]: profile } })),
     }),
     { name: 'kubepilot.cluster-prefs' },
   ),

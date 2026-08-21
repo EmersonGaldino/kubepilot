@@ -2,6 +2,22 @@ import { describe, expect, it } from 'vitest'
 
 import { logLineMatchesFilter, parseLogLine } from './logLineParser'
 
+describe('AKS/containerd log envelopes', () => {
+  it('parses a CRI stdout envelope around a Serilog entry', () => {
+    const parsed = parseLogLine('2026-08-20T14:35:01.123456789Z stdout F [14:35:01 INF] Started worker')
+    expect(parsed.level).toBe('INF')
+    expect(parsed.message).toBe('Started worker')
+  })
+
+  it('parses uppercase Azure JSON properties and preserves the raw line', () => {
+    const raw = '{"TimeGenerated":"2026-08-20T14:35:01Z","Level":"Error","Message":"Request failed"}'
+    const parsed = parseLogLine(raw)
+    expect(parsed.level).toBe('ERR')
+    expect(parsed.timestamp).toBe('2026-08-20T14:35:01Z')
+    expect(parsed.raw).toBe(raw)
+  })
+})
+
 describe('parseLogLine', () => {
   it('parses a Serilog-style console line', () => {
     const result = parseLogLine('[14:32:07 INF] Starting up')

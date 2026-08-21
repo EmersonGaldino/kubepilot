@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { IconButton } from '@/components/ui/IconButton'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useExecSession } from '@/hooks/useExecSession'
+import { useClusterStore } from '@/stores/useClusterStore'
+import { useWorkspaceStore } from '@/stores/useWorkspaceStore'
 
 export function ExecConsole({
   namespace,
@@ -17,6 +19,9 @@ export function ExecConsole({
   onClose: () => void
 }) {
   const { output, error, write } = useExecSession({ namespace, podName, containerName })
+  const currentContext = useClusterStore((state) => state.currentContext)
+  const addActivity = useWorkspaceStore((state) => state.addOrUpdate)
+  const setActivityState = useWorkspaceStore((state) => state.setState)
   const [input, setInput] = useState('')
   const outputRef = useRef<HTMLDivElement>(null)
   useEscapeKey(onClose, true, true)
@@ -26,6 +31,22 @@ export function ExecConsole({
     if (!el) return
     el.scrollTop = el.scrollHeight
   }, [output])
+
+  useEffect(() => {
+    const id = `exec:${namespace}/${podName}:${containerName ?? ''}`
+    addActivity({
+      id,
+      kind: 'exec',
+      state: 'live',
+      title: `Exec · ${podName}`,
+      contextName: currentContext,
+      namespace,
+      resourceName: podName,
+      containerName,
+      route: '/pods',
+    })
+    return () => setActivityState(id, 'ended')
+  }, [addActivity, containerName, currentContext, namespace, podName, setActivityState])
 
   const submit = () => {
     write(`${input}\n`)

@@ -42,7 +42,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # @kubernetes/client-node 2.x pulls a current Undici release,
+          # which requires the Web IDL helpers available in Node 22+.
+          # Keeping CI on Node 20 made the port-forward service test fail
+          # before the application build started on every platform.
+          node-version: 22
 
       - run: npm ci
 
